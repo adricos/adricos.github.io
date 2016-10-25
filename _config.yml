@@ -3,6 +3,7 @@ url: "https://www.adriancosta.com.ar" # the base hostname & protocol for your si
 github_username:  adricos
 repository: "adricos/adricos.github.io"
 title: Adrian Costa
+description: Personal site
 email: info@adriancosta.com.ar
 
 paginate: 6 #articles per page
@@ -20,7 +21,7 @@ disqus:
 
 #google analytics
 google:
-    tracking-id: "" #your tracking id here
+    tracking-id: "UA-2111905-1" #your tracking id here
 
 gems:
   - jekyll-sitemap

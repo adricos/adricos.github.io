@@ -1,2 +1,16 @@
-<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/wow/1.1.2/wow.min.js"></script>
-<script type="text/javascript" src="{{ '/assets/js/app.js' | prepend: site.baseurl }}"></script>
+<footer>
+    <hr/>
+    <div class="left">
+        &copy;{{ site.time | date:"%Y" }}. Built with <a href="http://jekyllrb.com/">Jekyll</a> and
+        <a href="https://github.com/railsr/autm-rb">Autm-rb</a>
+    </div>
+
+    <div class="right">
+        {% unless site.linkedin == "" %}
+        <a id="linkedin" href="{{site.linkedin}}"><i class="fa fa-linkedin-square" style="color:#49B1F7;"></i></a>
+        {% endunless %}        
+        {% unless site.email == "" %}
+        <a id="email" href="mailto:{{site.email}}"><i class="fa fa-envelope" style="color:#49B1F7;"></i></a>
+        {% endunless %}
+    </div>
+</footer>

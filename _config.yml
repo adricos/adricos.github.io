@@ -26,6 +26,7 @@ google:
 gems:
   - jekyll-sitemap
   - jekyll-paginate
+  - jekyll-video-embed
 
 # This is used by feed.xml. Uncomment if you want to use it.
 # description: "..."

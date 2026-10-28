@@ -71,6 +71,7 @@ export default function GalagaPage() {
 
   // Keep live references for the 60fps requestAnimationFrame loop
   const scoreRef = useRef(0);
+  const highScoreRef = useRef(0);
   const livesRef = useRef(3);
   const waveRef = useRef(1);
   const gameStateRef = useRef<"ready" | "playing" | "game_over" | "stage_clear">("ready");
@@ -99,22 +100,9 @@ export default function GalagaPage() {
   const lastFireTimeRef = useRef(0);
   const gridOffsetRef = useRef({ x: 0, dir: 1, timer: 0 });
 
-  // Sync state to ref
-  useEffect(() => {
-    scoreRef.current = score;
-  }, [score]);
-
-  useEffect(() => {
-    livesRef.current = lives;
-  }, [lives]);
-
-  useEffect(() => {
-    waveRef.current = wave;
-  }, [wave]);
-
-  useEffect(() => {
-    gameStateRef.current = gameState;
-  }, [gameState]);
+  // Store action callbacks in refs so the game loop never needs to restart
+  const spawnWaveRef = useRef<(stageNum: number) => void>(() => {});
+  const restartGameRef = useRef<() => void>(() => {});
 
   // Load high score from local storage
   useEffect(() => {
@@ -123,7 +111,10 @@ export default function GalagaPage() {
         const saved = localStorage.getItem("galaga_vector_highscore");
         if (saved) {
           const parsed = parseInt(saved, 10);
-          if (!isNaN(parsed)) setHighScore(parsed);
+          if (!isNaN(parsed)) {
+            highScoreRef.current = parsed;
+            setHighScore(parsed);
+          }
         }
       } catch {
         // localStorage not available
@@ -204,18 +195,27 @@ export default function GalagaPage() {
     enemiesRef.current = enemies;
     lasersRef.current = [];
     enemyBulletsRef.current = [];
+    gameStateRef.current = "playing";
     setGameState("playing");
   }, []);
 
   // Reset Game
   const restartGame = useCallback(() => {
+    scoreRef.current = 0;
     setScore(0);
+    livesRef.current = 3;
     setLives(3);
+    waveRef.current = 1;
     setWave(1);
     playerRef.current.invulnerableTimer = 120;
     playerRef.current.isInvulnerable = true;
     spawnWave(1);
   }, [spawnWave]);
+
+  useEffect(() => {
+    spawnWaveRef.current = spawnWave;
+    restartGameRef.current = restartGame;
+  }, [spawnWave, restartGame]);
 
   // Main Canvas & Game Loop
   useEffect(() => {
@@ -262,7 +262,7 @@ export default function GalagaPage() {
       if (e.key === " " || e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
         keysRef.current.fire = true;
         if (gameStateRef.current === "game_over") {
-          restartGame();
+          restartGameRef.current();
         }
       }
       if (e.key === "Escape") {
@@ -285,19 +285,26 @@ export default function GalagaPage() {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
 
-    // Touch / Mouse controls
+    // Touch / Mouse controls confined within the arcade arena
     let isPointerDown = false;
+    const clampToArena = (clientX: number) => {
+      const playWidth = Math.min(width - 40, 640);
+      const playMinX = width / 2 - playWidth / 2;
+      const playMaxX = width / 2 + playWidth / 2;
+      return Math.max(playMinX + 18, Math.min(playMaxX - 18, clientX));
+    };
+
     const handlePointerDown = (e: PointerEvent) => {
       isPointerDown = true;
       keysRef.current.fire = true;
-      playerRef.current.x = Math.max(25, Math.min(width - 25, e.clientX));
+      playerRef.current.x = clampToArena(e.clientX);
       if (gameStateRef.current === "game_over") {
-        restartGame();
+        restartGameRef.current();
       }
     };
     const handlePointerMove = (e: PointerEvent) => {
       if (isPointerDown) {
-        playerRef.current.x = Math.max(25, Math.min(width - 25, e.clientX));
+        playerRef.current.x = clampToArena(e.clientX);
       }
     };
     const handlePointerUp = () => {
@@ -310,7 +317,7 @@ export default function GalagaPage() {
     window.addEventListener("pointerup", handlePointerUp);
 
     // Spawn first wave
-    spawnWave(1);
+    spawnWaveRef.current(1);
 
     // Vector Drawing Helpers
     const drawVectorPlayer = (x: number, y: number, isFlicker: boolean) => {
@@ -519,23 +526,39 @@ export default function GalagaPage() {
         ctx.stroke();
       }
 
-      // 3. Grid sway calculation (classic Galaga breathing formation)
+      // 3. Grid sway calculation & Arcade Combat Arena Boundaries
+      const playWidth = Math.min(width - 40, 640);
+      const playMinX = width / 2 - playWidth / 2;
+      const playMaxX = width / 2 + playWidth / 2;
+
+      // Draw subtle neon vector barrier boundaries on left and right
+      ctx.save();
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.2)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 8]);
+      ctx.beginPath();
+      ctx.moveTo(playMinX, 60);
+      ctx.lineTo(playMinX, height - 20);
+      ctx.moveTo(playMaxX, 60);
+      ctx.lineTo(playMaxX, height - 20);
+      ctx.stroke();
+      ctx.restore();
+
       const grid = gridOffsetRef.current;
       grid.timer += dt * 1.5;
-      grid.x = Math.sin(grid.timer) * 35;
+      grid.x = Math.sin(grid.timer) * 28;
 
-      const gridOriginX = width / 2 - 160 + grid.x;
-      const gridOriginY = 90;
-      const colSpacing = 44;
-      const rowSpacing = 38;
+      const colSpacing = 42;
+      const rowSpacing = 36;
+      const gridTotalWidth = 7 * colSpacing;
+      const gridOriginX = width / 2 - gridTotalWidth / 2 + grid.x;
+      const gridOriginY = 85;
 
       // 4. Update and Draw Enemies
       const enemies = enemiesRef.current;
-      let activeEnemiesCount = 0;
 
       for (let i = 0; i < enemies.length; i++) {
         const e = enemies[i];
-        activeEnemiesCount++;
         e.wingPhase += dt * 8;
 
         const targetX = gridOriginX + e.gridX * colSpacing;
@@ -619,24 +642,23 @@ export default function GalagaPage() {
         }
       }
 
-      // Check wave clear
-      if (activeEnemiesCount === 0 && gameStateRef.current === "playing") {
+      // Check wave clear (state change guarded with synchronous ref update)
+      if (enemies.length === 0 && gameStateRef.current === "playing") {
+        gameStateRef.current = "stage_clear";
         setGameState("stage_clear");
         setTimeout(() => {
-          setWave((w) => {
-            const next = w + 1;
-            spawnWave(next);
-            return next;
-          });
+          waveRef.current += 1;
+          setWave(waveRef.current);
+          spawnWaveRef.current(waveRef.current);
         }, 1800);
       }
 
-      // 5. Update and Draw Player
+      // 5. Update and Draw Player (strictly clamped to the arcade combat arena)
       const player = playerRef.current;
       if (gameStateRef.current === "playing" || gameStateRef.current === "ready") {
         if (keysRef.current.left) player.x -= player.speed;
         if (keysRef.current.right) player.x += player.speed;
-        player.x = Math.max(25, Math.min(width - 25, player.x));
+        player.x = Math.max(playMinX + 18, Math.min(playMaxX - 18, player.x));
 
         // Fire laser
         if (keysRef.current.fire && time - lastFireTimeRef.current > 180) {
@@ -687,14 +709,18 @@ export default function GalagaPage() {
 
             if (e.health <= 0) {
               const points = e.type === "boss" ? 200 : e.type === "butterfly" ? 100 : 80;
-              setScore((s) => {
-                const nextScore = s + points;
-                if (nextScore > highScore) {
-                  setHighScore(nextScore);
-                  localStorage.setItem("galaga_vector_highscore", nextScore.toString());
+              scoreRef.current += points;
+              setScore(scoreRef.current);
+
+              if (scoreRef.current > highScoreRef.current) {
+                highScoreRef.current = scoreRef.current;
+                setHighScore(scoreRef.current);
+                try {
+                  localStorage.setItem("galaga_vector_highscore", scoreRef.current.toString());
+                } catch {
+                  // localStorage unavailable
                 }
-                return nextScore;
-              });
+              }
 
               const expColor =
                 e.type === "boss" ? "#eab308" : e.type === "butterfly" ? "#ef4444" : "#06b6d4";
@@ -740,17 +766,17 @@ export default function GalagaPage() {
           if (dist < 16) {
             enemyBullets.splice(i, 1);
             createExplosion(player.x, player.y, "#38bdf8");
-            setLives((curr) => {
-              const nextLives = curr - 1;
-              if (nextLives <= 0) {
-                setGameState("game_over");
-              } else {
-                player.x = width / 2;
-                player.isInvulnerable = true;
-                player.invulnerableTimer = 140;
-              }
-              return nextLives;
-            });
+            livesRef.current -= 1;
+            setLives(livesRef.current);
+
+            if (livesRef.current <= 0) {
+              gameStateRef.current = "game_over";
+              setGameState("game_over");
+            } else {
+              player.x = width / 2;
+              player.isInvulnerable = true;
+              player.invulnerableTimer = 140;
+            }
             break;
           }
         }
@@ -771,17 +797,17 @@ export default function GalagaPage() {
             createExplosion(player.x, player.y, "#38bdf8");
             enemies.splice(i, 1);
 
-            setLives((curr) => {
-              const nextLives = curr - 1;
-              if (nextLives <= 0) {
-                setGameState("game_over");
-              } else {
-                player.x = width / 2;
-                player.isInvulnerable = true;
-                player.invulnerableTimer = 140;
-              }
-              return nextLives;
-            });
+            livesRef.current -= 1;
+            setLives(livesRef.current);
+
+            if (livesRef.current <= 0) {
+              gameStateRef.current = "game_over";
+              setGameState("game_over");
+            } else {
+              player.x = width / 2;
+              player.isInvulnerable = true;
+              player.invulnerableTimer = 140;
+            }
             break;
           }
         }
@@ -829,7 +855,7 @@ export default function GalagaPage() {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [spawnWave, restartGame, highScore, router]);
+  }, [router]);
 
   return (
     <div className="fixed inset-0 h-screen w-screen overflow-hidden bg-black select-none font-mono">

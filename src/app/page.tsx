@@ -77,7 +77,7 @@ export default function Home() {
           <LensSwitcher />
 
           {/* Primary Action Brand Icons (GitHub, LinkedIn, Email) */}
-          <div className="flex items-center justify-center gap-3 sm:gap-4 pt-1 sm:pt-2">
+          <div className="flex items-center justify-center gap-3 sm:gap-4">
             <a
               href="https://github.com/adricos"
               target="_blank"
@@ -114,7 +114,7 @@ export default function Home() {
           <Link
             href="/pipe"
             aria-label="Ceci n'est pas une pipe"
-            className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 inline-flex items-center justify-center p-1.5 rounded-full text-zinc-400 hover:text-zinc-800 dark:text-zinc-600 dark:hover:text-zinc-300 transition-all opacity-40 hover:opacity-100 hover:scale-110 active:scale-95"
+            className="absolute bottom-5 right-5 sm:bottom-7 sm:right-7 md:bottom-9 md:right-9 inline-flex items-center justify-center p-1 rounded-full text-zinc-400 hover:text-zinc-800 dark:text-zinc-600 dark:hover:text-zinc-300 transition-all opacity-40 hover:opacity-100 hover:scale-110 active:scale-95"
           >
             <PipeSvg className="h-4 w-auto sm:h-5 text-current" />
           </Link>

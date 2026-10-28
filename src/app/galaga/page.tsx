@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { EspiralSvg } from "../espiral-svg";
 
 // Pure vector game entities
 interface Laser {
@@ -911,13 +912,13 @@ export default function GalagaPage() {
             </div>
           </div>
 
-          {/* Exit / Return Home */}
+          {/* Exit / Return Home via Espiral Button */}
           <Link
             href="/"
-            aria-label="Return to Earth"
-            className="px-3 py-1.5 rounded-full border border-zinc-700 bg-zinc-900/80 hover:bg-zinc-800 text-xs sm:text-sm text-zinc-300 hover:text-white transition-all shadow-md active:scale-95"
+            aria-label="Volver al inicio"
+            className="group inline-flex items-center justify-center p-1.5 sm:p-2 rounded-full text-zinc-400 hover:text-white transition-all opacity-70 hover:opacity-100 hover:scale-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
           >
-            &larr; Earth [Esc]
+            <EspiralSvg className="h-6 w-auto sm:h-7 md:h-8 text-current transition-all duration-700 ease-out group-hover:rotate-180 group-hover:text-amber-400 drop-shadow-md" />
           </Link>
         </div>
       </header>

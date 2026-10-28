@@ -10,7 +10,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Adrian Costa — Tech Lead",
   description:
-    "Tech Lead at Nimble with 25+ years of experience delivering modern full-stack web platforms, React Native mobile apps, and agentic AI systems.",
+    "Tech Lead with 25+ years of experience delivering modern full-stack web platforms, React Native mobile apps, and agentic AI systems.",
   icons: {
     icon: "/favicon.ico",
   },

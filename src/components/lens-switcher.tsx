@@ -41,7 +41,7 @@ const LENSES: Record<LensType, LensData> = {
       "Material UI",
       "Chart.js",
     ],
-    note: "Architecting corporate actions at Vanguard, Finbourne & energy intelligence at ENX.",
+    note: "Architecting corporate actions processing, financial asset servicing & energy intelligence systems.",
     accent: "bg-cyan-500/15 text-cyan-900 dark:text-cyan-200 border-cyan-500/30 dark:bg-cyan-950/50",
   },
   mobile: {

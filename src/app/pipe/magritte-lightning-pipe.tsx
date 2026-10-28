@@ -4,24 +4,7 @@ import { useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PIPE_PATH_DATA } from "./pipe-svg";
-
-function ArrowLeftIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      {...props}
-    >
-      <path d="m12 19-7-7 7-7" />
-      <path d="M19 12H5" />
-    </svg>
-  );
-}
+import { EspiralSvg } from "../espiral-svg";
 
 /**
  * Magritte Surrealist Clouds
@@ -397,14 +380,13 @@ export function MagritteLightningPipe() {
         className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(ellipse_at_center,rgba(186,230,253,0.22)_0%,rgba(56,189,248,0.08)_50%,transparent_80%)] opacity-0 transition-opacity duration-75"
       />
 
-      {/* Discreet top-left back link */}
+      {/* Top-left espiral button to return home */}
       <Link
         href="/"
-        aria-label="Back to home"
-        className="fixed top-5 left-5 sm:top-7 sm:left-7 z-20 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium tracking-wide uppercase text-zinc-400 hover:text-white bg-zinc-900/60 hover:bg-zinc-800/80 border border-white/10 backdrop-blur-md transition-all hover:scale-105 active:scale-95 shadow-lg"
+        aria-label="Volver al inicio"
+        className="fixed top-5 left-5 sm:top-7 sm:left-7 md:top-9 md:left-9 z-20 group inline-flex items-center justify-center p-2 rounded-full text-zinc-400 hover:text-white transition-all opacity-50 hover:opacity-100 hover:scale-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
       >
-        <ArrowLeftIcon className="w-3.5 h-3.5" />
-        <span>Home</span>
+        <EspiralSvg className="h-7 w-auto sm:h-8 md:h-9 text-current transition-all duration-700 ease-out group-hover:rotate-180 group-hover:text-amber-400 dark:group-hover:text-amber-300 drop-shadow-md" />
       </Link>
 
       {/* Interactive Pipe Container */}

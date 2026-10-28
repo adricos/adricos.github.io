@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { CelestialNightSky } from "../components/celestial-night-sky";
 import { TiltCard } from "../components/tilt-card";
 import { InteractiveSpiral } from "../components/interactive-spiral";
@@ -51,17 +50,20 @@ export default function Home() {
       {/* Main Presentation Card */}
       <main className="flex flex-1 flex-col items-center justify-center text-center max-w-lg mx-auto z-10 w-full my-auto px-2">
         <div className="w-full rounded-3xl border border-white/30 dark:border-white/10 bg-white/75 dark:bg-zinc-950/75 backdrop-blur-xl shadow-2xl p-5 sm:p-7 space-y-4 sm:space-y-5">
-          {/* Interactive 3D tilt avatar */}
+          {/* Interactive 3D tilt avatar video */}
           <TiltCard maxTilt={10}>
             <div className="relative group cursor-pointer inline-block">
-              <div className="relative h-24 w-24 sm:h-28 sm:w-28 overflow-hidden rounded-full ring-4 ring-zinc-300/80 dark:ring-zinc-700/80 shadow-xl transition-transform duration-300 group-hover:scale-105">
-                <Image
-                  src="/images/adrian.jpg"
-                  alt="Adrian Costa"
-                  fill
-                  priority
-                  className="object-cover"
-                  sizes="(max-width: 768px) 96px, 112px"
+              <div className="relative h-24 w-24 sm:h-28 sm:w-28 overflow-hidden rounded-full ring-4 ring-zinc-300/80 dark:ring-zinc-700/80 shadow-xl transition-transform duration-300 group-hover:scale-105 bg-zinc-950">
+                <video
+                  src="/videos/avatar.mp4"
+                  poster="/images/avatar-poster.jpg"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="auto"
+                  aria-label="Adrian Costa"
+                  className="h-full w-full object-cover"
                 />
               </div>
             </div>

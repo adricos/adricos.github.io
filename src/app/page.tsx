@@ -1,4 +1,6 @@
 import Image from "next/image";
+import Link from "next/link";
+import { EspiralSvg } from "./espiral-svg";
 
 export default function Home() {
   return (
@@ -18,8 +20,16 @@ export default function Home() {
         </div>
 
         <div className="space-y-3">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Adrian Costa
+          <h1 className="flex items-center justify-center gap-2.5 sm:gap-3 text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            <Link
+              href="/pipe"
+              className="group inline-flex items-center justify-center transition-transform hover:scale-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 rounded-sm"
+              title="Ceci n'est pas une pipe"
+              aria-label="Ceci n'est pas une pipe"
+            >
+              <EspiralSvg className="h-8 w-auto sm:h-9 text-zinc-800 dark:text-zinc-200 transition-colors group-hover:text-zinc-950 dark:group-hover:text-white" />
+            </Link>
+            <span>Adrian Costa</span>
           </h1>
           <p className="text-base sm:text-lg text-zinc-600 dark:text-zinc-400">
             Software Developer &amp; Tech Enthusiast
@@ -52,15 +62,8 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="w-full text-center py-6 text-xs text-zinc-500 dark:text-zinc-500 flex flex-col sm:flex-row items-center justify-center gap-2">
-        <span>&copy; {new Date().getFullYear()} Adrian Costa.</span>
-        <span className="hidden sm:inline">&bull;</span>
-        <a
-          href="/pipe.html"
-          className="hover:underline text-zinc-400 dark:text-zinc-600"
-        >
-          Ceci n&apos;est pas une pipe
-        </a>
+      <footer className="w-full text-center py-6 text-xs text-zinc-500 dark:text-zinc-500">
+        &copy; {new Date().getFullYear()} Adrian Costa.
       </footer>
     </div>
   );

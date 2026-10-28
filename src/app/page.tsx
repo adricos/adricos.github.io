@@ -1,5 +1,6 @@
 import { CelestialNightSky } from "../components/celestial-night-sky";
 import { TiltCard } from "../components/tilt-card";
+import { AvatarVideo } from "../components/avatar-video";
 import { InteractiveSpiral } from "../components/interactive-spiral";
 import { LensSwitcher } from "../components/lens-switcher";
 
@@ -54,17 +55,7 @@ export default function Home() {
           <TiltCard maxTilt={10}>
             <div className="relative group cursor-pointer inline-block">
               <div className="relative h-24 w-24 sm:h-28 sm:w-28 overflow-hidden rounded-full ring-4 ring-zinc-300/80 dark:ring-zinc-700/80 shadow-xl transition-transform duration-300 group-hover:scale-105 bg-zinc-950">
-                <video
-                  src="/videos/avatar.mp4"
-                  poster="/images/avatar-poster.jpg"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="auto"
-                  aria-label="Adrian Costa"
-                  className="h-full w-full object-cover"
-                />
+                <AvatarVideo />
               </div>
             </div>
           </TiltCard>

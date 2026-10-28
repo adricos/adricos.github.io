@@ -89,7 +89,7 @@ export default function GalagaPage() {
     y: 0,
     width: 32,
     height: 32,
-    speed: 5.5,
+    speed: 4.2,
     isInvulnerable: false,
     invulnerableTimer: 0,
   });
@@ -135,7 +135,7 @@ export default function GalagaPage() {
   const spawnWave = useCallback((stageNum: number) => {
     const enemies: Enemy[] = [];
     let id = 0;
-    const enterSpeedFactor = 0.08 / Math.min(1.5, 1 + (stageNum - 1) * 0.05);
+    const enterSpeedFactor = 0.12 / Math.min(1.5, 1 + (stageNum - 1) * 0.05);
 
     // Grid: 4 rows x 8 columns
     // Row 0: 4 Bosses (centered)
@@ -512,6 +512,7 @@ export default function GalagaPage() {
     const loop = (time: number) => {
       const dt = Math.min((time - lastTime) / 1000, 0.1);
       lastTime = time;
+      const timeScale = Math.min(dt * 60, 2.0);
 
       // 1. Clear with deep space backdrop
       ctx.fillStyle = "#030712";
@@ -522,7 +523,7 @@ export default function GalagaPage() {
       const stars = starsRef.current;
       for (let i = 0; i < stars.length; i++) {
         const s = stars[i];
-        s.y += s.speed;
+        s.y += s.speed * 0.7 * timeScale;
         if (s.y > height) {
           s.y = 0;
           s.x = Math.random() * width;
@@ -553,8 +554,8 @@ export default function GalagaPage() {
       ctx.restore();
 
       const grid = gridOffsetRef.current;
-      grid.timer += dt * 1.5;
-      grid.x = Math.sin(grid.timer) * 28;
+      grid.timer += dt * 0.9;
+      grid.x = Math.sin(grid.timer) * 24;
 
       const colSpacing = 42;
       const rowSpacing = 36;
@@ -567,13 +568,13 @@ export default function GalagaPage() {
 
       for (let i = 0; i < enemies.length; i++) {
         const e = enemies[i];
-        e.wingPhase += dt * 8;
+        e.wingPhase += dt * 5;
 
         const targetX = gridOriginX + e.gridX * colSpacing;
         const targetY = gridOriginY + e.gridY * rowSpacing;
 
         if (e.state === "entering") {
-          e.enterProgress += dt * 0.75;
+          e.enterProgress += dt * 0.38;
           if (e.enterProgress > 0) {
             const t = Math.min(e.enterProgress, 1);
             // Swooping bezier entrance curve
@@ -597,8 +598,8 @@ export default function GalagaPage() {
           e.x = targetX;
           e.y = targetY;
 
-          // Random dive-bombing trigger
-          if (Math.random() < 0.002 * waveRef.current) {
+          // Measured dive-bombing rate (~1 enemy at a time in early waves)
+          if (Math.random() < 0.0006 * timeScale * Math.min(2.0, 1 + (waveRef.current - 1) * 0.2)) {
             e.state = "diving";
             e.diveProgress = 0;
             e.diveStartX = e.x;
@@ -606,20 +607,20 @@ export default function GalagaPage() {
             e.diveCurve = Math.random() > 0.5 ? 1 : -1;
           }
         } else if (e.state === "diving") {
-          e.diveProgress += dt * (0.65 + waveRef.current * 0.08);
+          e.diveProgress += dt * (0.30 + Math.min(0.18, (waveRef.current - 1) * 0.025));
           const t = e.diveProgress;
 
           // Parabolic dive through screen towards player
           e.x = e.diveStartX + Math.sin(t * Math.PI * 2) * (70 * e.diveCurve);
           e.y = e.diveStartY + t * (height - 40);
 
-          // Enemy shoots laser at player during dive
-          if (Math.random() < 0.025 && enemyBulletsRef.current.length < 8) {
+          // Enemy shoots laser at player during dive (measured and dodgeable)
+          if (Math.random() < 0.008 * timeScale && enemyBulletsRef.current.length < 4) {
             enemyBulletsRef.current.push({
               x: e.x,
               y: e.y + 10,
-              vx: (Math.random() - 0.5) * 1.2,
-              vy: 3.8 + waveRef.current * 0.3,
+              vx: (Math.random() - 0.5) * 0.6,
+              vy: 2.2 + Math.min(1.0, (waveRef.current - 1) * 0.15),
             });
           }
 
@@ -629,8 +630,8 @@ export default function GalagaPage() {
             e.y = -30;
           }
         } else if (e.state === "returning") {
-          e.y += dt * 110;
-          e.x += (targetX - e.x) * 0.06;
+          e.y += dt * 75;
+          e.x += (targetX - e.x) * 0.04;
           if (e.y >= targetY) {
             e.state = "in_grid";
             e.x = targetX;
@@ -664,21 +665,22 @@ export default function GalagaPage() {
       // 5. Update and Draw Player (strictly clamped to the arcade combat arena)
       const player = playerRef.current;
       if (gameStateRef.current === "playing" || gameStateRef.current === "ready") {
-        if (keysRef.current.left) player.x -= player.speed;
-        if (keysRef.current.right) player.x += player.speed;
+        const moveDist = player.speed * timeScale;
+        if (keysRef.current.left) player.x -= moveDist;
+        if (keysRef.current.right) player.x += moveDist;
         player.x = Math.max(playMinX + 18, Math.min(playMaxX - 18, player.x));
 
         // Fire laser
-        if (keysRef.current.fire && time - lastFireTimeRef.current > 180) {
+        if (keysRef.current.fire && time - lastFireTimeRef.current > 190) {
           lastFireTimeRef.current = time;
-          lasersRef.current.push({ x: player.x - 7, y: player.y - 18, vy: -12 });
-          lasersRef.current.push({ x: player.x + 7, y: player.y - 18, vy: -12 });
+          lasersRef.current.push({ x: player.x - 7, y: player.y - 18, vy: -8.5 });
+          lasersRef.current.push({ x: player.x + 7, y: player.y - 18, vy: -8.5 });
         }
 
         // Invulnerability flicker
         let isFlicker = false;
         if (player.isInvulnerable) {
-          player.invulnerableTimer--;
+          player.invulnerableTimer -= timeScale;
           if (player.invulnerableTimer <= 0) {
             player.isInvulnerable = false;
           }
@@ -697,7 +699,7 @@ export default function GalagaPage() {
 
       for (let i = lasers.length - 1; i >= 0; i--) {
         const l = lasers[i];
-        l.y += l.vy;
+        l.y += l.vy * timeScale;
 
         ctx.beginPath();
         ctx.moveTo(l.x, l.y);
@@ -756,8 +758,8 @@ export default function GalagaPage() {
 
       for (let i = enemyBullets.length - 1; i >= 0; i--) {
         const b = enemyBullets[i];
-        b.x += b.vx;
-        b.y += b.vy;
+        b.x += b.vx * timeScale;
+        b.y += b.vy * timeScale;
 
         // Draw diamond vector bullet
         ctx.beginPath();
@@ -825,10 +827,10 @@ export default function GalagaPage() {
       const particles = particlesRef.current;
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
-        p.life++;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.angle += p.vRot;
+        p.life += timeScale;
+        p.x += p.vx * timeScale;
+        p.y += p.vy * timeScale;
+        p.angle += p.vRot * timeScale;
         p.alpha = Math.max(0, 1 - p.life / p.maxLife);
 
         ctx.save();

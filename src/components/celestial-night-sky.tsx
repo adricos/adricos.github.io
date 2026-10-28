@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import * as THREE from "three";
 
 function lerpColor(
@@ -58,11 +59,14 @@ function getSkyAtmosphere(hour: number) {
 }
 
 export function CelestialNightSky() {
+  const router = useRouter();
   const threeMountRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const hourRef = useRef<number>(22.5); // Night over Rosario
   const isAdvancingRef = useRef<boolean>(false);
+  const hasTriggeredDayRef = useRef<boolean>(false);
+  const [isWarping, setIsWarping] = useState<boolean>(false);
 
   // Listen to spiral hover events to cycle celestial hours until dawn
   useEffect(() => {
@@ -186,8 +190,21 @@ export function CelestialNightSky() {
 
       // Advance celestial time when hovering the spiral
       if (isAdvancingRef.current) {
-        const hoursPerSec = 2.6;
+        const hoursPerSec = 3.0;
         hourRef.current = (hourRef.current + dt * hoursPerSec) % 24;
+
+        // When morning daylight is reached, trigger warp into the secret vector arcade
+        if (
+          !hasTriggeredDayRef.current &&
+          hourRef.current >= 7.5 &&
+          hourRef.current <= 15.0
+        ) {
+          hasTriggeredDayRef.current = true;
+          setIsWarping(true);
+          setTimeout(() => {
+            router.push("/galaga");
+          }, 350);
+        }
       }
 
       ctx.clearRect(0, 0, width, height);
@@ -218,7 +235,7 @@ export function CelestialNightSky() {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", handleResize);
     };
-  }, []);
+  }, [router]);
 
   return (
     <>
@@ -235,6 +252,14 @@ export function CelestialNightSky() {
         className="pointer-events-none fixed inset-0 -z-10 h-full w-full"
         aria-hidden="true"
       />
+
+      {/* Daybreak Hyperspace Warp Transition Overlay */}
+      {isWarping && (
+        <div
+          className="fixed inset-0 z-50 pointer-events-none bg-sky-100 dark:bg-white animate-pulse transition-opacity duration-300"
+          aria-hidden="true"
+        />
+      )}
     </>
   );
 }

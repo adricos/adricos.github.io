@@ -44,13 +44,13 @@ function MailIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export default function Home() {
   return (
-    <div className="relative h-screen h-[100dvh] max-h-screen overflow-hidden flex flex-col items-center justify-between p-3 sm:p-6">
+    <div className="relative h-screen h-[100dvh] max-h-screen overflow-hidden flex flex-col items-center justify-center p-2 sm:p-4">
       {/* Night Sky: Real 360° Milky Way, Dawn cycle on spiral hover */}
       <CelestialNightSky />
 
       {/* Main Presentation Card */}
-      <main className="flex flex-1 flex-col items-center justify-center text-center max-w-lg mx-auto z-10 w-full my-auto px-2">
-        <div className="w-full rounded-3xl border border-white/30 dark:border-white/10 bg-white/75 dark:bg-zinc-950/75 backdrop-blur-xl shadow-2xl p-5 sm:p-7 space-y-4 sm:space-y-5">
+      <main className="flex flex-col items-center justify-center text-center max-w-lg mx-auto z-10 w-full px-2">
+        <div className="w-full rounded-3xl border border-white/30 dark:border-white/10 bg-white/75 dark:bg-zinc-950/75 backdrop-blur-xl shadow-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
           {/* Interactive 3D tilt avatar video */}
           <TiltCard maxTilt={10}>
             <div className="relative group cursor-pointer inline-block">
@@ -109,11 +109,6 @@ export default function Home() {
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="w-full text-center py-2 text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400 z-10 font-medium">
-        &copy; {new Date().getFullYear()} Adrian Costa.
-      </footer>
     </div>
   );
 }

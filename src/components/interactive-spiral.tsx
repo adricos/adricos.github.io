@@ -1,41 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { EspiralSvg } from "../app/espiral-svg";
 
 export function InteractiveSpiral() {
+  const [isHovered, setIsHovered] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [isSpinning, setIsSpinning] = useState(false);
 
   const handleMouseEnter = () => {
-    setRotation((prev) => prev + 180);
+    setIsHovered(true);
+    window.dispatchEvent(new CustomEvent("celestial-time-advance-start"));
   };
 
-  const handleClick = () => {
-    setIsSpinning(true);
-    setRotation((prev) => prev + 720);
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    window.dispatchEvent(new CustomEvent("celestial-time-advance-end"));
   };
+
+  // Continuous smooth spin while hovered as hours cycle
+  useEffect(() => {
+    if (!isHovered) return;
+    const interval = setInterval(() => {
+      setRotation((prev) => (prev + 30) % 360);
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [isHovered]);
 
   return (
     <Link
       href="/pipe"
       onMouseEnter={handleMouseEnter}
-      onClick={handleClick}
-      className="group relative inline-flex items-center justify-center p-1 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-600 transition-transform active:scale-90"
-      title="Ceci n'est pas une pipe (Click to explore)"
-      aria-label="Ceci n'est pas une pipe"
+      onMouseLeave={handleMouseLeave}
+      className="group relative inline-flex items-center justify-center p-1 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:focus-visible:ring-amber-500 transition-transform active:scale-95"
+      title="Hover to cycle celestial time • Click to explore pipe"
+      aria-label="Ceci n'est pas une pipe — Celestial time dial"
     >
       <div
         style={{
           transform: `rotate(${rotation}deg)`,
-          transition: isSpinning
-            ? "transform 0.8s cubic-bezier(0.2, 0.9, 0.3, 1)"
-            : "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+          transition: isHovered ? "transform 0.05s linear" : "transform 0.5s ease-out",
         }}
         className="flex items-center justify-center will-change-transform"
       >
-        <EspiralSvg className="h-8 w-auto sm:h-9 text-zinc-800 dark:text-zinc-200 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors" />
+        <EspiralSvg
+          className={`h-8 w-auto sm:h-9 transition-colors duration-300 ${
+            isHovered
+              ? "text-amber-400 dark:text-amber-300 filter drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"
+              : "text-zinc-800 dark:text-zinc-200 group-hover:text-zinc-950 dark:group-hover:text-white"
+          }`}
+        />
       </div>
       <span className="sr-only">Explore hidden pipe route</span>
     </Link>

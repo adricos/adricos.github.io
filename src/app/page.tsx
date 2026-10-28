@@ -44,17 +44,17 @@ function MailIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export default function Home() {
   return (
-    <div className="relative h-screen h-[100dvh] max-h-screen overflow-hidden flex flex-col items-center justify-center p-2 sm:p-4">
+    <div className="relative min-h-screen h-[100dvh] max-h-screen overflow-hidden flex flex-col items-center justify-center p-2 sm:p-4">
       {/* Night Sky: Real 360° Milky Way, Dawn cycle on spiral hover */}
       <CelestialNightSky />
 
-      {/* Main Presentation Card */}
-      <main className="flex flex-col items-center justify-center text-center max-w-lg mx-auto z-10 w-full px-2">
-        <div className="w-full rounded-3xl border border-white/30 dark:border-white/10 bg-white/75 dark:bg-zinc-950/75 backdrop-blur-xl shadow-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
+      {/* Main Presentation Card (scaled to 150% desktop size matching ~750px width) */}
+      <main className="flex flex-col items-center justify-center text-center max-w-xl sm:max-w-2xl md:max-w-3xl mx-auto z-10 w-full px-2 sm:px-4">
+        <div className="w-full rounded-3xl border border-white/30 dark:border-white/10 bg-white/75 dark:bg-zinc-950/75 backdrop-blur-xl shadow-2xl p-5 sm:p-7 md:p-9 space-y-4 sm:space-y-5">
           {/* Interactive 3D tilt avatar video */}
           <TiltCard maxTilt={10}>
             <div className="relative group cursor-pointer inline-block">
-              <div className="relative h-24 w-24 sm:h-28 sm:w-28 overflow-hidden rounded-full ring-4 ring-zinc-300/80 dark:ring-zinc-700/80 shadow-xl transition-transform duration-300 group-hover:scale-105 bg-zinc-950">
+              <div className="relative h-28 w-28 sm:h-36 sm:w-36 md:h-40 md:w-40 overflow-hidden rounded-full ring-4 ring-zinc-300/80 dark:ring-zinc-700/80 shadow-2xl transition-transform duration-300 group-hover:scale-105 bg-zinc-950">
                 <AvatarVideo />
               </div>
             </div>
@@ -62,11 +62,11 @@ export default function Home() {
 
           {/* Name with interactive spinning spiral celestial time dial */}
           <div className="space-y-0.5 sm:space-y-1">
-            <h1 className="flex items-center justify-center gap-2 sm:gap-2.5 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50 drop-shadow-xs">
+            <h1 className="flex items-center justify-center gap-2 sm:gap-3.5 text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50 drop-shadow-xs">
               <InteractiveSpiral />
               <span>Adrian Costa</span>
             </h1>
-            <p className="text-xs sm:text-sm font-medium tracking-wide uppercase text-zinc-600 dark:text-zinc-400">
+            <p className="text-xs sm:text-sm md:text-base font-medium tracking-wide uppercase text-zinc-600 dark:text-zinc-400">
               Tech Lead
             </p>
           </div>
@@ -75,16 +75,16 @@ export default function Home() {
           <LensSwitcher />
 
           {/* Primary Action Brand Icons (GitHub, LinkedIn, Email) */}
-          <div className="flex items-center justify-center gap-3 pt-1">
+          <div className="flex items-center justify-center gap-3 sm:gap-4 pt-1 sm:pt-2">
             <a
               href="https://github.com/adricos"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="GitHub Profile"
               title="GitHub"
-              className="inline-flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-zinc-300/80 dark:border-zinc-700/80 bg-white/90 dark:bg-zinc-900/90 text-zinc-800 dark:text-zinc-200 shadow-sm backdrop-blur-md transition-all hover:bg-white dark:hover:bg-zinc-800 hover:text-black dark:hover:text-white hover:scale-110 active:scale-95"
+              className="inline-flex h-11 w-11 sm:h-13 sm:w-13 md:h-14 md:w-14 items-center justify-center rounded-full border border-zinc-300/80 dark:border-zinc-700/80 bg-white/90 dark:bg-zinc-900/90 text-zinc-800 dark:text-zinc-200 shadow-sm backdrop-blur-md transition-all hover:bg-white dark:hover:bg-zinc-800 hover:text-black dark:hover:text-white hover:scale-110 active:scale-95"
             >
-              <GithubIcon className="h-5 w-5" />
+              <GithubIcon className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7" />
             </a>
 
             <a
@@ -93,18 +93,18 @@ export default function Home() {
               rel="noopener noreferrer"
               aria-label="LinkedIn Profile"
               title="LinkedIn"
-              className="inline-flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-zinc-300/80 dark:border-zinc-700/80 bg-white/90 dark:bg-zinc-900/90 text-zinc-800 dark:text-zinc-200 shadow-sm backdrop-blur-md transition-all hover:bg-white dark:hover:bg-zinc-800 hover:text-[#0a66c2] dark:hover:text-[#0a66c2] hover:scale-110 active:scale-95"
+              className="inline-flex h-11 w-11 sm:h-13 sm:w-13 md:h-14 md:w-14 items-center justify-center rounded-full border border-zinc-300/80 dark:border-zinc-700/80 bg-white/90 dark:bg-zinc-900/90 text-zinc-800 dark:text-zinc-200 shadow-sm backdrop-blur-md transition-all hover:bg-white dark:hover:bg-zinc-800 hover:text-[#0a66c2] dark:hover:text-[#0a66c2] hover:scale-110 active:scale-95"
             >
-              <LinkedinIcon className="h-5 w-5" />
+              <LinkedinIcon className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7" />
             </a>
 
             <a
               href="mailto:info@adriancosta.com.ar"
               aria-label="Send Email"
               title="Contact via Email"
-              className="inline-flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-md backdrop-blur-md transition-all hover:bg-zinc-800 dark:hover:bg-white hover:scale-110 active:scale-95"
+              className="inline-flex h-11 w-11 sm:h-13 sm:w-13 md:h-14 md:w-14 items-center justify-center rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-md backdrop-blur-md transition-all hover:bg-zinc-800 dark:hover:bg-white hover:scale-110 active:scale-95"
             >
-              <MailIcon className="h-5 w-5" />
+              <MailIcon className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7" />
             </a>
           </div>
         </div>

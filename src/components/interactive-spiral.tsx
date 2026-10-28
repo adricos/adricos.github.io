@@ -44,7 +44,7 @@ export function InteractiveSpiral() {
         className="flex items-center justify-center will-change-transform"
       >
         <EspiralSvg
-          className={`h-8 w-auto sm:h-9 transition-colors duration-300 ${
+          className={`h-8 w-auto sm:h-10 md:h-11 transition-colors duration-300 ${
             isHovered
               ? "text-amber-400 dark:text-amber-300 filter drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"
               : "text-zinc-800 dark:text-zinc-200 group-hover:text-zinc-950 dark:group-hover:text-white"

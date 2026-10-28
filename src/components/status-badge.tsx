@@ -12,7 +12,7 @@ export function StatusBadge() {
       </span>
       <span className="text-zinc-300 dark:text-zinc-700 select-none">&bull;</span>
       <span className="text-zinc-500 dark:text-zinc-400">
-        Buenos Aires (UTC-3)
+        Rosario, Argentina (UTC-3)
       </span>
     </div>
   );

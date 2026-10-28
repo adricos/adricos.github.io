@@ -116,9 +116,9 @@ export function CommandPalette() {
         id: "location",
         title: "Current Base & Timezone",
         category: "About",
-        description: "Buenos Aires, Argentina (UTC-3)",
+        description: "Rosario, Argentina (UTC-3)",
         action: () => {
-          alert(`Adrian Costa is based in Buenos Aires, Argentina.\nTimezone: America/Argentina/Buenos_Aires (UTC-3).`);
+          alert(`Adrian Costa is based in Rosario, Argentina.\nTimezone: America/Argentina/Buenos_Aires (UTC-3).`);
         },
       },
     ];

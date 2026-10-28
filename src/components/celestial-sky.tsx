@@ -2,98 +2,127 @@
 
 import { useEffect, useRef, useState } from "react";
 
-interface ConstellationStar {
-  x: number;
-  y: number;
+interface PolarStar {
+  r: number; // Normalized radial distance from South Celestial Pole [0..1]
+  theta: number; // Polar angle in radians [0..2*PI]
+  color?: string;
+  size?: number;
 }
 
 interface Constellation {
   name: string;
-  stars: ConstellationStar[];
+  stars: PolarStar[];
   edges: [number, number][];
 }
 
-interface TwinkleStar {
-  x: number;
-  y: number;
+interface BackgroundStar {
+  r: number;
+  theta: number;
   size: number;
   baseBrightness: number;
   twinkleSpeed: number;
   twinklePhase: number;
+  color: string;
 }
 
-const CONSTELLATIONS: Constellation[] = [
+// Authentic Southern Hemisphere Constellations visible from Rosario, Argentina (-33° S, -60.6° W)
+const SOUTHERN_CONSTELLATIONS: Constellation[] = [
   {
-    name: "Crux (Southern Cross)",
+    name: "La Cruz del Sur (Crux)",
     stars: [
-      { x: 0.16, y: 0.65 }, // Gacrux
-      { x: 0.19, y: 0.83 }, // Acrux
-      { x: 0.11, y: 0.73 }, // Mimosa
-      { x: 0.23, y: 0.74 }, // Imai
-      { x: 0.20, y: 0.77 }, // Ginan
+      { r: 0.28, theta: 1.95, size: 3.2, color: "#e0f2fe" }, // Acrux (Alpha Crucis)
+      { r: 0.29, theta: 1.83, size: 2.8, color: "#bae6fd" }, // Mimosa (Beta Crucis)
+      { r: 0.23, theta: 1.93, size: 2.9, color: "#fdba74" }, // Gacrux (Gamma - Red/orange giant)
+      { r: 0.24, theta: 1.84, size: 2.2, color: "#f0f9ff" }, // Imai (Delta Crucis)
+      { r: 0.27, theta: 1.90, size: 1.8, color: "#ffffff" }, // Ginan (Epsilon Crucis)
     ],
     edges: [
-      [0, 1],
+      [2, 0], // Gacrux to Acrux
+      [1, 3], // Mimosa to Imai
+    ],
+  },
+  {
+    name: "Los Punteros (Alfa y Beta Centauri)",
+    stars: [
+      { r: 0.35, theta: 1.68, size: 3.6, color: "#fef08a" }, // Rigil Kentaurus (Alpha Centauri)
+      { r: 0.33, theta: 1.74, size: 3.0, color: "#bae6fd" }, // Hadar (Beta Centauri)
+      { r: 0.42, theta: 1.76, size: 2.2, color: "#ffffff" }, // Muhlifain
+      { r: 0.52, theta: 1.82, size: 2.4, color: "#ffffff" }, // Menkent
+    ],
+    edges: [
+      [0, 1], // The Pointers pointing directly to Crux!
+      [1, 2],
       [2, 3],
     ],
   },
   {
-    name: "Ursa Major",
+    name: "Carina y Canopus",
     stars: [
-      { x: 0.74, y: 0.15 },
-      { x: 0.79, y: 0.17 },
-      { x: 0.83, y: 0.20 },
-      { x: 0.87, y: 0.23 },
-      { x: 0.93, y: 0.20 },
-      { x: 0.92, y: 0.28 },
-      { x: 0.86, y: 0.30 },
+      { r: 0.38, theta: 2.95, size: 3.8, color: "#ffffff" }, // Canopus (2nd brightest star in the sky!)
+      { r: 0.22, theta: 2.70, size: 2.6, color: "#bae6fd" }, // Miaplacidus
+      { r: 0.32, theta: 2.60, size: 2.5, color: "#fdba74" }, // Avior
+      { r: 0.36, theta: 2.65, size: 2.3, color: "#ffffff" }, // Aspidiske
     ],
     edges: [
-      [0, 1],
       [1, 2],
       [2, 3],
-      [3, 4],
+      [3, 0],
+    ],
+  },
+  {
+    name: "Escorpión (Scorpius)",
+    stars: [
+      { r: 0.62, theta: 0.85, size: 3.5, color: "#f87171" }, // Antares (Red supergiant heart of Scorpion)
+      { r: 0.68, theta: 0.95, size: 2.4, color: "#bae6fd" }, // Graffias
+      { r: 0.65, theta: 0.91, size: 2.5, color: "#bae6fd" }, // Dschubba
+      { r: 0.63, theta: 0.96, size: 2.2, color: "#ffffff" }, // Pi Scorpii
+      { r: 0.58, theta: 0.78, size: 2.3, color: "#fed7aa" }, // Wei
+      { r: 0.52, theta: 0.68, size: 2.5, color: "#ffffff" }, // Sargas
+      { r: 0.55, theta: 0.60, size: 2.7, color: "#bae6fd" }, // Shaula (The Stinger)
+      { r: 0.56, theta: 0.58, size: 2.1, color: "#ffffff" }, // Lesath
+    ],
+    edges: [
+      [1, 2],
+      [2, 3],
+      [2, 0],
+      [0, 4],
       [4, 5],
       [5, 6],
-      [6, 3],
+      [6, 7],
     ],
   },
   {
-    name: "Cassiopeia",
+    name: "Orión (Las Tres Marías)",
     stars: [
-      { x: 0.12, y: 0.22 },
-      { x: 0.16, y: 0.28 },
-      { x: 0.21, y: 0.23 },
-      { x: 0.26, y: 0.29 },
-      { x: 0.31, y: 0.24 },
+      { r: 0.72, theta: 4.25, size: 3.2, color: "#fb923c" }, // Betelgeuse (Red supergiant)
+      { r: 0.78, theta: 4.18, size: 2.6, color: "#bae6fd" }, // Bellatrix
+      { r: 0.74, theta: 4.35, size: 2.5, color: "#bae6fd" }, // Alnitak
+      { r: 0.75, theta: 4.38, size: 2.6, color: "#ffffff" }, // Alnilam (Middle Maria)
+      { r: 0.76, theta: 4.41, size: 2.5, color: "#bae6fd" }, // Mintaka
+      { r: 0.71, theta: 4.48, size: 2.4, color: "#ffffff" }, // Saiph
+      { r: 0.82, theta: 4.42, size: 3.4, color: "#93c5fd" }, // Rigel (Bright blue-white supergiant)
     ],
     edges: [
-      [0, 1],
-      [1, 2],
-      [2, 3],
-      [3, 4],
-    ],
-  },
-  {
-    name: "Orion",
-    stars: [
-      { x: 0.78, y: 0.63 }, // Betelgeuse
-      { x: 0.88, y: 0.61 }, // Bellatrix
-      { x: 0.81, y: 0.71 }, // Alnitak
-      { x: 0.83, y: 0.72 }, // Alnilam
-      { x: 0.85, y: 0.73 }, // Mintaka
-      { x: 0.79, y: 0.82 }, // Saiph
-      { x: 0.89, y: 0.80 }, // Rigel
-    ],
-    edges: [
-      [0, 1],
       [0, 2],
       [1, 4],
-      [2, 3],
-      [3, 4],
+      [2, 3], // Las Tres Marías
+      [3, 4], // Las Tres Marías
       [2, 5],
       [4, 6],
-      [5, 6],
+    ],
+  },
+  {
+    name: "Can Mayor y Sirio",
+    stars: [
+      { r: 0.65, theta: 3.65, size: 4.0, color: "#e0f2fe" }, // Sirius (Brightest star in the sky!)
+      { r: 0.60, theta: 3.52, size: 2.5, color: "#bae6fd" }, // Adhara
+      { r: 0.58, theta: 3.58, size: 2.4, color: "#fed7aa" }, // Wezen
+      { r: 0.71, theta: 3.72, size: 2.3, color: "#ffffff" }, // Murzim
+    ],
+    edges: [
+      [3, 0],
+      [0, 2],
+      [2, 1],
     ],
   },
 ];
@@ -112,9 +141,8 @@ function lerpColor(
   ];
 }
 
-// Compute sky gradient colors and star opacity for any given hour [0..24)
+// Compute sky gradient colors and star visibility across 24h cycle
 function getSkyParameters(hour: number) {
-  // Normalize hour into 0..24
   const h = ((hour % 24) + 24) % 24;
 
   let topColor: [number, number, number];
@@ -123,25 +151,25 @@ function getSkyParameters(hour: number) {
   let phaseName = "Night";
   let phaseIcon = "✨";
 
-  if (h >= 21 || h < 4.5) {
-    // Deep Night
+  if (h >= 21 || h < 5.0) {
+    // Night in Rosario
     topColor = [3, 7, 18]; // zinc-950
     bottomColor = [15, 23, 42]; // slate-900
     starOpacity = 1;
     phaseName = "Night";
     phaseIcon = "✨";
-  } else if (h >= 4.5 && h < 7.5) {
+  } else if (h >= 5.0 && h < 7.5) {
     // Dawn / Sunrise
-    const progress = (h - 4.5) / 3;
+    const progress = (h - 5.0) / 2.5;
     topColor = lerpColor([3, 7, 18], [56, 189, 248], progress);
-    bottomColor = lerpColor([15, 23, 42], [249, 115, 22], Math.min(1, progress * 1.2));
-    if (progress > 0.6) {
-      bottomColor = lerpColor([249, 115, 22], [254, 215, 170], (progress - 0.6) / 0.4);
+    bottomColor = lerpColor([15, 23, 42], [249, 115, 22], Math.min(1, progress * 1.3));
+    if (progress > 0.5) {
+      bottomColor = lerpColor([249, 115, 22], [254, 215, 170], (progress - 0.5) / 0.5);
     }
-    starOpacity = Math.max(0, 1 - progress * 1.5);
+    starOpacity = Math.max(0, 1 - progress * 1.4);
     phaseName = "Dawn";
     phaseIcon = "🌅";
-  } else if (h >= 7.5 && h < 16.5) {
+  } else if (h >= 7.5 && h < 17.0) {
     // Full Daylight
     topColor = [14, 165, 233]; // sky-500
     bottomColor = [224, 242, 254]; // sky-100
@@ -149,15 +177,15 @@ function getSkyParameters(hour: number) {
     phaseName = "Daylight";
     phaseIcon = "☀️";
   } else {
-    // Dusk / Sunset (16.5 .. 21.0)
-    const progress = (h - 16.5) / 4.5;
+    // Dusk / Sunset (17.0 .. 21.0)
+    const progress = (h - 17.0) / 4.0;
     topColor = lerpColor([14, 165, 233], [3, 7, 18], progress);
     if (progress < 0.5) {
       bottomColor = lerpColor([224, 242, 254], [244, 63, 94], progress * 2);
     } else {
       bottomColor = lerpColor([244, 63, 94], [15, 23, 42], (progress - 0.5) * 2);
     }
-    starOpacity = Math.max(0, (progress - 0.3) / 0.7);
+    starOpacity = Math.max(0, (progress - 0.25) / 0.75);
     phaseName = "Dusk";
     phaseIcon = "🌇";
   }
@@ -167,8 +195,10 @@ function getSkyParameters(hour: number) {
 
 export function CelestialSky() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const hourRef = useRef<number>(23); // Start at deep night (23:00)
+  const hourRef = useRef<number>(22.5); // Default start: Rosario clear night
+  const rotationAngleRef = useRef<number>(0); // Earth rotation angle in radians
   const isAdvancingRef = useRef<boolean>(false);
+
   const [celestialInfo, setCelestialInfo] = useState<{
     phaseName: string;
     phaseIcon: string;
@@ -177,12 +207,11 @@ export function CelestialSky() {
   }>({
     phaseName: "Night",
     phaseIcon: "✨",
-    formattedTime: "23:00",
+    formattedTime: "22:30",
     isAdvancing: false,
   });
 
   useEffect(() => {
-    // Listen to spiral hover events to advance celestial time
     const handleStart = () => {
       isAdvancingRef.current = true;
       setCelestialInfo((prev) => ({ ...prev, isAdvancing: true }));
@@ -212,7 +241,6 @@ export function CelestialSky() {
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    // Mouse coordinates for constellation proximity
     const mouse = { x: -1000, y: -1000 };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -234,17 +262,19 @@ export function CelestialSky() {
     window.addEventListener("mouseleave", handleMouseLeave, { passive: true });
     window.addEventListener("resize", handleResize);
 
-    // Initialize 140 random twinkling stars across the sky
-    const stars: TwinkleStar[] = [];
-    const starCount = 140;
+    // 160 Background stars distributed in polar coordinates around South Celestial Pole
+    const starColors = ["#ffffff", "#e0f2fe", "#bae6fd", "#fef3c7", "#fed7aa"];
+    const backgroundStars: BackgroundStar[] = [];
+    const starCount = 160;
     for (let i = 0; i < starCount; i++) {
-      stars.push({
-        x: Math.random(),
-        y: Math.random(),
-        size: Math.random() * 1.5 + 0.8,
+      backgroundStars.push({
+        r: Math.sqrt(Math.random()) * 0.95, // Even polar distribution
+        theta: Math.random() * Math.PI * 2,
+        size: Math.random() * 1.6 + 0.7,
         baseBrightness: Math.random() * 0.5 + 0.5,
         twinkleSpeed: Math.random() * 0.03 + 0.01,
         twinklePhase: Math.random() * Math.PI * 2,
+        color: starColors[Math.floor(Math.random() * starColors.length)],
       });
     }
 
@@ -255,13 +285,18 @@ export function CelestialSky() {
       const dt = (now - lastTime) / 1000;
       lastTime = now;
 
-      // If user is hovering the spiral, advance hour forward continuously!
+      // Earth rotation:
+      // When idle, smooth slow diurnal rotation (~0.015 rad/sec)
+      // When hovering spiral, accelerated rotation linked to advancing hours!
       if (isAdvancingRef.current) {
-        // Advance ~2.8 hours per second (completes full 24h cycle in ~8.5 seconds)
-        hourRef.current = (hourRef.current + dt * 2.8) % 24;
+        const hoursPerSec = 2.8;
+        hourRef.current = (hourRef.current + dt * hoursPerSec) % 24;
+        rotationAngleRef.current += (hoursPerSec / 24) * Math.PI * 2 * dt;
+      } else {
+        // Continuous gentle Earth rotation
+        rotationAngleRef.current += 0.008 * dt;
       }
 
-      // Update UI state periodically (every ~10 frames)
       tickCounter++;
       if (tickCounter % 8 === 0) {
         const currentH = Math.floor(hourRef.current);
@@ -278,39 +313,58 @@ export function CelestialSky() {
 
       const { topColor, bottomColor, starOpacity } = getSkyParameters(hourRef.current);
 
-      // Draw Sky Gradient
+      // 1. Draw Sky Gradient
       const gradient = ctx.createLinearGradient(0, 0, 0, height);
       gradient.addColorStop(0, `rgb(${topColor[0]}, ${topColor[1]}, ${topColor[2]})`);
       gradient.addColorStop(1, `rgb(${bottomColor[0]}, ${bottomColor[1]}, ${bottomColor[2]})`);
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, width, height);
 
-      // Render Stars & Constellations only if night/dawn/dusk allows stars
-      if (starOpacity > 0.02) {
-        // 1. Background Twinkling Stars
-        for (const star of stars) {
+      // Center of Earth's South Celestial Pole rotation (placed slightly below center to mirror Rosario sky)
+      const poleX = width * 0.5;
+      const poleY = height * 0.62;
+      const skyRadius = Math.max(width, height) * 0.85;
+      const rot = rotationAngleRef.current;
+
+      // 2. Render Stars & Constellations only when darkness allows
+      if (starOpacity > 0.01) {
+        // A) Background Twinkling Stars rotating with the Earth
+        for (const star of backgroundStars) {
           star.twinklePhase += star.twinkleSpeed;
           const twinkle = (Math.sin(star.twinklePhase) + 1) / 2;
-          const alpha = star.baseBrightness * (0.4 + twinkle * 0.6) * starOpacity;
+          const alpha = star.baseBrightness * (0.35 + twinkle * 0.65) * starOpacity;
 
-          const px = star.x * width;
-          const py = star.y * height;
+          // Polar to Cartesian with Earth rotation
+          const currentTheta = star.theta + rot;
+          const sx = poleX + Math.cos(currentTheta) * (star.r * skyRadius);
+          const sy = poleY + Math.sin(currentTheta) * (star.r * skyRadius);
+
+          if (sx < -20 || sx > width + 20 || sy < -20 || sy > height + 20) continue;
 
           ctx.beginPath();
-          ctx.arc(px, py, star.size, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(3)})`;
+          ctx.arc(sx, sy, star.size, 0, Math.PI * 2);
+          ctx.fillStyle = star.color;
+          ctx.globalAlpha = alpha;
           ctx.fill();
         }
+        ctx.globalAlpha = 1;
 
-        // 2. Constellations with Interactive Hover Connections
-        for (const constellation of CONSTELLATIONS) {
-          // Compute screen coordinates for each star
-          const screenStars = constellation.stars.map((s) => ({
-            x: s.x * width,
-            y: s.y * height,
-          }));
+        // B) Southern Constellations (Rosario Sky)
+        for (const constellation of SOUTHERN_CONSTELLATIONS) {
+          // Project stars to screen space with Earth rotation
+          const screenStars = constellation.stars.map((s) => {
+            const currentTheta = s.theta + rot;
+            const sx = poleX + Math.cos(currentTheta) * (s.r * skyRadius);
+            const sy = poleY + Math.sin(currentTheta) * (s.r * skyRadius);
+            return {
+              x: sx,
+              y: sy,
+              color: s.color || "#ffffff",
+              size: s.size || 2.5,
+            };
+          });
 
-          // Measure distance from mouse to any star in this constellation
+          // Measure distance from mouse cursor to any star in this constellation
           let minDist = Infinity;
           for (const s of screenStars) {
             const dx = s.x - mouse.x;
@@ -319,51 +373,67 @@ export function CelestialSky() {
             if (d < minDist) minDist = d;
           }
 
-          // If mouse is near (within 130px), activate constellation joining lines!
-          const hoverThreshold = 130;
-          const hoverFactor =
-            minDist < hoverThreshold ? (1 - minDist / hoverThreshold) : 0;
+          // Hover threshold: 120px from any star in the constellation
+          const hoverThreshold = 120;
+          const isHovered = minDist < hoverThreshold;
+          const hoverFactor = isHovered ? 1 - minDist / hoverThreshold : 0;
 
-          // Draw Constellation Connection Lines
-          // Always faint in the dark, glows brightly when hovered!
-          const lineAlpha = (0.12 + hoverFactor * 0.75) * starOpacity;
-          ctx.lineWidth = 1 + hoverFactor * 1.5;
-          ctx.strokeStyle = `rgba(186, 230, 253, ${lineAlpha.toFixed(3)})`;
+          // ⭐️ CRITICAL REQUIREMENT:
+          // The constellation lines should NOT be seen until you hover!
+          // We ONLY draw the lines if hoverFactor > 0!
+          if (hoverFactor > 0.01) {
+            const lineAlpha = hoverFactor * starOpacity;
+            ctx.lineWidth = 1.2 + hoverFactor * 1.4;
+            ctx.strokeStyle = `rgba(186, 230, 253, ${lineAlpha.toFixed(3)})`;
 
-          for (const [fromIdx, toIdx] of constellation.edges) {
-            const p1 = screenStars[fromIdx];
-            const p2 = screenStars[toIdx];
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
+            for (const [fromIdx, toIdx] of constellation.edges) {
+              const p1 = screenStars[fromIdx];
+              const p2 = screenStars[toIdx];
+              ctx.beginPath();
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.stroke();
+            }
           }
 
-          // Draw Constellation Stars (with halo glow when hovered)
+          // Draw Constellation Stars
           for (const s of screenStars) {
-            // Outer glow if hovered
-            if (hoverFactor > 0.1) {
-              const glowGrad = ctx.createRadialGradient(s.x, s.y, 1, s.x, s.y, 14 * hoverFactor);
-              glowGrad.addColorStop(0, `rgba(186, 230, 253, ${(0.6 * hoverFactor * starOpacity).toFixed(2)})`);
+            // If hovered, draw glowing outer halo
+            if (hoverFactor > 0.05) {
+              const glowGrad = ctx.createRadialGradient(
+                s.x,
+                s.y,
+                1,
+                s.x,
+                s.y,
+                16 * hoverFactor
+              );
+              glowGrad.addColorStop(
+                0,
+                `rgba(186, 230, 253, ${(0.7 * hoverFactor * starOpacity).toFixed(2)})`
+              );
               glowGrad.addColorStop(1, "rgba(186, 230, 253, 0)");
               ctx.fillStyle = glowGrad;
               ctx.beginPath();
-              ctx.arc(s.x, s.y, 14 * hoverFactor, 0, Math.PI * 2);
+              ctx.arc(s.x, s.y, 16 * hoverFactor, 0, Math.PI * 2);
               ctx.fill();
             }
 
-            // Central bright star
+            // Star Core
+            const currentSize = s.size + hoverFactor * 1.5;
             ctx.beginPath();
-            ctx.arc(s.x, s.y, 2.2 + hoverFactor * 1.2, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, (0.7 + hoverFactor * 0.3) * starOpacity)})`;
+            ctx.arc(s.x, s.y, currentSize, 0, Math.PI * 2);
+            ctx.fillStyle = s.color;
+            ctx.globalAlpha = Math.min(1, (0.8 + hoverFactor * 0.2) * starOpacity);
             ctx.fill();
+            ctx.globalAlpha = 1;
           }
 
-          // Show Constellation Name when actively hovered
+          // Show Constellation Name ONLY when actively hovered
           if (hoverFactor > 0.35 && screenStars[0]) {
             const labelX = screenStars[0].x;
-            const labelY = screenStars[0].y - 14;
-            ctx.font = "11px var(--font-sans), system-ui, sans-serif";
+            const labelY = screenStars[0].y - 16;
+            ctx.font = "12px var(--font-sans), system-ui, sans-serif";
             ctx.fillStyle = `rgba(224, 242, 254, ${(hoverFactor * starOpacity).toFixed(2)})`;
             ctx.textAlign = "center";
             ctx.fillText(constellation.name, labelX, labelY);
@@ -388,26 +458,28 @@ export function CelestialSky() {
     <>
       <canvas
         ref={canvasRef}
-        className="pointer-events-none fixed inset-0 -z-10 h-full w-full transition-opacity duration-700"
+        className="pointer-events-none fixed inset-0 -z-10 h-full w-full"
         aria-hidden="true"
       />
 
       {/* Floating celestial status indicator */}
       <div
-        className={`fixed bottom-4 right-4 z-20 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-zinc-950/60 text-zinc-300 backdrop-blur-md text-xs font-mono transition-all duration-300 ${
+        className={`fixed bottom-4 right-4 z-20 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-zinc-950/70 text-zinc-300 backdrop-blur-md text-xs font-mono transition-all duration-300 ${
           celestialInfo.isAdvancing
-            ? "scale-105 border-amber-400/40 text-amber-200 shadow-lg shadow-amber-500/10 ring-2 ring-amber-400/20"
+            ? "scale-105 border-amber-400/50 text-amber-200 shadow-xl shadow-amber-500/15 ring-2 ring-amber-400/25"
             : "opacity-80 hover:opacity-100"
         }`}
-        title="Celestial Time Dial (Hover the spiral to cycle time)"
+        title="Cielo de Rosario, Argentina • Rotación de la Tierra • Pase el cursor sobre la espiral para avanzar las horas hacia el amanecer"
       >
         <span className="text-sm">{celestialInfo.phaseIcon}</span>
         <span>{celestialInfo.formattedTime}</span>
         <span className="text-zinc-500">&bull;</span>
         <span className="text-[11px] uppercase tracking-wider">{celestialInfo.phaseName}</span>
+        <span className="text-zinc-500 hidden sm:inline">&bull;</span>
+        <span className="text-[11px] text-zinc-400 hidden sm:inline">Rosario</span>
         {celestialInfo.isAdvancing && (
           <span className="text-[10px] text-amber-400 animate-pulse font-semibold">
-            &Delta; Cycling
+            &Delta; Rotando
           </span>
         )}
       </div>

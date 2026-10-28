@@ -34,7 +34,6 @@ export function InteractiveSpiral() {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className="group relative inline-flex items-center justify-center p-1 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:focus-visible:ring-amber-500 transition-transform active:scale-95"
-      title="Hover to cycle celestial time • Click to explore pipe"
       aria-label="Ceci n'est pas une pipe — Celestial time dial"
     >
       <div

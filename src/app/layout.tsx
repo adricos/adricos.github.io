@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Adrian Costa",
-  description: "Personal site of Adrian Costa",
+  title: "Adrian Costa — Tech Lead",
+  description:
+    "Tech Lead at Nimble with 25+ years of experience delivering modern full-stack web platforms, React Native mobile apps, and agentic AI systems.",
   icons: {
     icon: "/favicon.ico",
   },
@@ -23,9 +24,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} font-sans h-full antialiased`}
+      className={`${jetbrainsMono.variable} font-mono h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-zinc-50 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
+      <body className="min-h-full flex flex-col bg-zinc-50 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100 font-mono">
         {children}
       </body>
     </html>

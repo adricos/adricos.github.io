@@ -13,7 +13,7 @@ export default function PipePage() {
       <Link
         href="/"
         className="flex h-full w-full items-center justify-center cursor-default"
-        title="Back to home"
+        aria-label="Back to home"
       >
         <PipeSvg className="h-full w-full max-h-full max-w-full object-contain text-zinc-900 dark:text-zinc-100 transition-transform duration-300 hover:scale-[1.01]" />
       </Link>

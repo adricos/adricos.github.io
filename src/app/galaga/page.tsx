@@ -68,6 +68,14 @@ export default function GalagaPage() {
   const [wave, setWave] = useState(1);
   const [lives, setLives] = useState(3);
   const [gameState, setGameState] = useState<"ready" | "playing" | "game_over" | "stage_clear">("ready");
+  const [isEnteringWarp, setIsEnteringWarp] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsEnteringWarp(false);
+    }, 60);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Keep live references for the 60fps requestAnimationFrame loop
   const scoreRef = useRef(0);
@@ -859,6 +867,14 @@ export default function GalagaPage() {
 
   return (
     <div className="fixed inset-0 h-screen w-screen overflow-hidden bg-black select-none font-mono">
+      {/* Seamless Warp Entry Flash (matches main page warp exit, smoothly fading into deep space) */}
+      <div
+        className={`fixed inset-0 z-50 bg-white pointer-events-none transition-opacity duration-700 ease-out ${
+          isEnteringWarp ? "opacity-100" : "opacity-0"
+        }`}
+        aria-hidden="true"
+      />
+
       {/* 100% Vector Canvas */}
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full block touch-none" />
 

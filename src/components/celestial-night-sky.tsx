@@ -65,6 +65,7 @@ export function CelestialNightSky() {
 
   const hourRef = useRef<number>(22.5); // Night over Rosario
   const isAdvancingRef = useRef<boolean>(false);
+  const advanceDurationRef = useRef<number>(0);
   const hasTriggeredDayRef = useRef<boolean>(false);
   const [isWarping, setIsWarping] = useState<boolean>(false);
 
@@ -76,6 +77,7 @@ export function CelestialNightSky() {
 
     const handleEnd = () => {
       isAdvancingRef.current = false;
+      advanceDurationRef.current = 0;
     };
 
     window.addEventListener("celestial-time-advance-start", handleStart);
@@ -140,11 +142,23 @@ export function CelestialNightSky() {
       const dt = (now - lastTime) / 1000;
       lastTime = now;
 
-      // Diurnal rotation of the Milky Way around Earth's axis
+      // Diurnal rotation of the Milky Way with dramatic warp speed acceleration
       if (isAdvancingRef.current) {
-        milkyWayMesh.rotation.y += (2.6 / 24) * Math.PI * 2 * dt;
+        // Warp multiplier builds exponentially from 1.0 up to 12.0!
+        const warpMultiplier =
+          1.0 + Math.pow(advanceDurationRef.current * 1.5, 2.2);
+        milkyWayMesh.rotation.y += 0.35 * warpMultiplier * dt;
+
+        // Optical warp stretch: camera FOV widens as warp engages
+        const targetFov = 55 + Math.min(26, warpMultiplier * 2.2);
+        camera.fov += (targetFov - camera.fov) * 0.1;
+        camera.updateProjectionMatrix();
       } else {
         milkyWayMesh.rotation.y += 0.006 * dt;
+        if (camera.fov > 55.2) {
+          camera.fov += (55 - camera.fov) * 0.1;
+          camera.updateProjectionMatrix();
+        }
       }
 
       renderer.render(scene, camera);
@@ -182,16 +196,35 @@ export function CelestialNightSky() {
 
     window.addEventListener("resize", handleResize);
 
+    // Radial Hyperspace Warp Stars
+    interface WarpStar {
+      x: number;
+      y: number;
+      z: number;
+      pz: number;
+    }
+    const warpStars: WarpStar[] = [];
+    for (let i = 0; i < 110; i++) {
+      warpStars.push({
+        x: (Math.random() - 0.5) * 2000,
+        y: (Math.random() - 0.5) * 2000,
+        z: Math.random() * 1000 + 1,
+        pz: 1000,
+      });
+    }
+
     let lastTime = performance.now();
 
     const render = (now: number) => {
       const dt = (now - lastTime) / 1000;
       lastTime = now;
 
-      // Advance celestial time when hovering or holding the spiral
+      // Advance celestial time with warp velocity acceleration
       if (isAdvancingRef.current) {
-        // Calibrated smooth pace: gives user time to enjoy the dawn cycle
-        const hoursPerSec = 1.4;
+        advanceDurationRef.current += dt;
+        const warpMultiplier =
+          1.0 + Math.pow(advanceDurationRef.current * 1.5, 2.2);
+        const hoursPerSec = 0.9 * warpMultiplier;
         hourRef.current = (hourRef.current + dt * hoursPerSec) % 24;
 
         // When morning daylight is reached, trigger warp into the secret vector arcade
@@ -202,10 +235,10 @@ export function CelestialNightSky() {
         ) {
           hasTriggeredDayRef.current = true;
           setIsWarping(true);
-          setTimeout(() => {
-            router.push("/galaga");
-          }, 450);
+          router.push("/galaga");
         }
+      } else {
+        advanceDurationRef.current = 0;
       }
 
       ctx.clearRect(0, 0, width, height);
@@ -225,6 +258,45 @@ export function CelestialNightSky() {
         );
         ctx.fillStyle = skyGrad;
         ctx.fillRect(0, 0, width, height);
+      }
+
+      // Render Hyperspace Warp Speed Lines when accelerating
+      if (advanceDurationRef.current > 0.3) {
+        const cx = width / 2;
+        const cy = height / 2;
+        const warpSpeed = Math.min(75, Math.pow(advanceDurationRef.current, 2.3) * 14);
+        const streakAlpha = Math.min(0.85, (advanceDurationRef.current - 0.3) * 0.7);
+
+        ctx.lineWidth = 1.6;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${streakAlpha.toFixed(2)})`;
+
+        for (let i = 0; i < warpStars.length; i++) {
+          const ws = warpStars[i];
+          ws.pz = ws.z;
+          ws.z -= warpSpeed;
+
+          if (ws.z <= 0) {
+            ws.z = 1000;
+            ws.pz = 1000;
+            ws.x = (Math.random() - 0.5) * 2000;
+            ws.y = (Math.random() - 0.5) * 2000;
+          }
+
+          const k = 320 / ws.z;
+          const px = ws.x * k + cx;
+          const py = ws.y * k + cy;
+
+          const pk = 320 / ws.pz;
+          const prevX = ws.x * pk + cx;
+          const prevY = ws.y * pk + cy;
+
+          if (px >= 0 && px <= width && py >= 0 && py <= height) {
+            ctx.beginPath();
+            ctx.moveTo(prevX, prevY);
+            ctx.lineTo(px, py);
+            ctx.stroke();
+          }
+        }
       }
 
       animationFrameId = requestAnimationFrame(render);
@@ -254,10 +326,10 @@ export function CelestialNightSky() {
         aria-hidden="true"
       />
 
-      {/* Daybreak Hyperspace Warp Transition Overlay */}
+      {/* Solid Daybreak Hyperspace Warp Transition Overlay (z-[100] covers entire screen, preventing any flash of main page) */}
       {isWarping && (
         <div
-          className="fixed inset-0 z-50 pointer-events-none bg-sky-100 dark:bg-white animate-pulse transition-opacity duration-300"
+          className="fixed inset-0 z-[100] pointer-events-auto bg-white transition-opacity duration-300 opacity-100"
           aria-hidden="true"
         />
       )}

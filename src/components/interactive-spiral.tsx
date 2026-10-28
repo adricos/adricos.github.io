@@ -6,7 +6,8 @@ import { EspiralSvg } from "../app/espiral-svg";
 
 export function InteractiveSpiral() {
   const [isActive, setIsActive] = useState(false);
-  const [rotation, setRotation] = useState(0);
+  const spiralRef = useRef<HTMLDivElement | null>(null);
+  const rotationRef = useRef(0);
   const pressStartTimeRef = useRef(0);
 
   const startAdvance = () => {
@@ -20,14 +21,31 @@ export function InteractiveSpiral() {
     window.dispatchEvent(new CustomEvent("celestial-time-advance-end"));
   };
 
-  // Continuous smooth, graceful spin while hovered or held (calibrated pace)
+  // Accelerating warp velocity spin directly updating DOM for 60/120fps butter-smooth rotation
+  // No React state re-render thrashing, and no CSS transition fighting or % 360 reverse-spin glitch!
   useEffect(() => {
     if (!isActive) return;
-    const interval = setInterval(() => {
-      setRotation((prev) => (prev + 7) % 360);
-    }, 35);
+    let animId: number;
+    let lastTime = performance.now();
+    let speed = 120; // initial deg per sec
 
-    return () => clearInterval(interval);
+    const loop = (time: number) => {
+      const dt = Math.min((time - lastTime) / 1000, 0.1);
+      lastTime = time;
+
+      // Exponential warp acceleration: smoothly ramps up
+      speed += dt * 360;
+      rotationRef.current += speed * dt;
+
+      if (spiralRef.current) {
+        spiralRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
+      }
+
+      animId = requestAnimationFrame(loop);
+    };
+
+    animId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(animId);
   }, [isActive]);
 
   const handleClick = (e: React.MouseEvent) => {
@@ -52,9 +70,9 @@ export function InteractiveSpiral() {
       aria-label="Ceci n'est pas une pipe — Celestial time dial"
     >
       <div
+        ref={spiralRef}
         style={{
-          transform: `rotate(${rotation}deg)`,
-          transition: isActive ? "transform 0.05s linear" : "transform 0.6s ease-out",
+          transition: isActive ? "none" : "transform 0.6s ease-out",
         }}
         className="flex items-center justify-center will-change-transform"
       >

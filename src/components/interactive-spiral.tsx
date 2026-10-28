@@ -1,17 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { EspiralSvg } from "../app/espiral-svg";
 
 export function InteractiveSpiral() {
   const [isActive, setIsActive] = useState(false);
   const spiralRef = useRef<HTMLDivElement | null>(null);
   const rotationRef = useRef(0);
-  const pressStartTimeRef = useRef(0);
 
   const startAdvance = () => {
-    pressStartTimeRef.current = Date.now();
     setIsActive(true);
     window.dispatchEvent(new CustomEvent("celestial-time-advance-start"));
   };
@@ -22,7 +19,6 @@ export function InteractiveSpiral() {
   };
 
   // Accelerating warp velocity spin directly updating DOM for 60/120fps butter-smooth rotation
-  // No React state re-render thrashing, and no CSS transition fighting or % 360 reverse-spin glitch!
   useEffect(() => {
     if (!isActive) return;
     let animId: number;
@@ -48,26 +44,18 @@ export function InteractiveSpiral() {
     return () => cancelAnimationFrame(animId);
   }, [isActive]);
 
-  const handleClick = (e: React.MouseEvent) => {
-    const holdDuration = Date.now() - pressStartTimeRef.current;
-    // If held for more than 400ms, prevent navigating to /pipe so user can enjoy the celestial sunrise into Galaga
-    if (holdDuration > 400) {
-      e.preventDefault();
-    }
-  };
-
   return (
-    <Link
-      href="/pipe"
-      onClick={handleClick}
+    <div
+      role="button"
+      tabIndex={0}
       onMouseEnter={startAdvance}
       onMouseLeave={stopAdvance}
       onTouchStart={startAdvance}
       onTouchEnd={stopAdvance}
       onTouchCancel={stopAdvance}
       onContextMenu={(e) => e.preventDefault()}
-      className="group relative inline-flex items-center justify-center p-1 rounded-full select-none touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:focus-visible:ring-amber-500 transition-transform active:scale-95"
-      aria-label="Ceci n'est pas une pipe — Celestial time dial"
+      className="group relative inline-flex items-center justify-center p-1 rounded-full select-none touch-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:focus-visible:ring-amber-500 transition-transform active:scale-95"
+      aria-label="Celestial time dial"
     >
       <div
         ref={spiralRef}
@@ -84,7 +72,6 @@ export function InteractiveSpiral() {
           }`}
         />
       </div>
-      <span className="sr-only">Explore hidden pipe route</span>
-    </Link>
+    </div>
   );
 }

@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { CelestialNightSky } from "../components/celestial-night-sky";
 import { TiltCard } from "../components/tilt-card";
 import { AvatarVideo } from "../components/avatar-video";
 import { InteractiveSpiral } from "../components/interactive-spiral";
 import { LensSwitcher } from "../components/lens-switcher";
+import { PipeSvg } from "./pipe/pipe-svg";
 
 function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -50,7 +52,7 @@ export default function Home() {
 
       {/* Main Presentation Card (scaled to 150% desktop size matching ~750px width) */}
       <main className="flex flex-col items-center justify-center text-center max-w-xl sm:max-w-2xl md:max-w-3xl mx-auto z-10 w-full px-2 sm:px-4">
-        <div className="w-full rounded-3xl border border-white/30 dark:border-white/10 bg-white/75 dark:bg-zinc-950/75 backdrop-blur-xl shadow-2xl p-5 sm:p-7 md:p-9 space-y-4 sm:space-y-5">
+        <div className="relative w-full rounded-3xl border border-white/30 dark:border-white/10 bg-white/75 dark:bg-zinc-950/75 backdrop-blur-xl shadow-2xl p-5 sm:p-7 md:p-9 space-y-4 sm:space-y-5">
           {/* Interactive 3D tilt avatar video */}
           <TiltCard maxTilt={10}>
             <div className="relative group cursor-pointer inline-block">
@@ -107,6 +109,15 @@ export default function Home() {
               <MailIcon className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7" />
             </a>
           </div>
+
+          {/* Little pipe at bottom right inside container going to /pipe */}
+          <Link
+            href="/pipe"
+            aria-label="Ceci n'est pas une pipe"
+            className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 inline-flex items-center justify-center p-1.5 rounded-full text-zinc-400 hover:text-zinc-800 dark:text-zinc-600 dark:hover:text-zinc-300 transition-all opacity-40 hover:opacity-100 hover:scale-110 active:scale-95"
+          >
+            <PipeSvg className="h-4 w-auto sm:h-5 text-current" />
+          </Link>
         </div>
       </main>
     </div>

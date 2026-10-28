@@ -80,7 +80,7 @@ export default function GalagaPage() {
     y: 0,
     width: 32,
     height: 32,
-    speed: 7,
+    speed: 5.5,
     isInvulnerable: false,
     invulnerableTimer: 0,
   });
@@ -237,7 +237,7 @@ export default function GalagaPage() {
       stars.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        speed: 0.5 + Math.random() * 2.5,
+        speed: 0.3 + Math.random() * 1.2,
         len: 1 + Math.random() * 3,
         brightness: 0.3 + Math.random() * 0.7,
       });
@@ -542,7 +542,7 @@ export default function GalagaPage() {
         const targetY = gridOriginY + e.gridY * rowSpacing;
 
         if (e.state === "entering") {
-          e.enterProgress += dt * 1.2;
+          e.enterProgress += dt * 0.75;
           if (e.enterProgress > 0) {
             const t = Math.min(e.enterProgress, 1);
             // Swooping bezier entrance curve
@@ -567,7 +567,7 @@ export default function GalagaPage() {
           e.y = targetY;
 
           // Random dive-bombing trigger
-          if (Math.random() < 0.003 * waveRef.current) {
+          if (Math.random() < 0.002 * waveRef.current) {
             e.state = "diving";
             e.diveProgress = 0;
             e.diveStartX = e.x;
@@ -575,7 +575,7 @@ export default function GalagaPage() {
             e.diveCurve = Math.random() > 0.5 ? 1 : -1;
           }
         } else if (e.state === "diving") {
-          e.diveProgress += dt * (1.1 + waveRef.current * 0.1);
+          e.diveProgress += dt * (0.65 + waveRef.current * 0.08);
           const t = e.diveProgress;
 
           // Parabolic dive through screen towards player
@@ -583,12 +583,12 @@ export default function GalagaPage() {
           e.y = e.diveStartY + t * (height - 40);
 
           // Enemy shoots laser at player during dive
-          if (Math.random() < 0.035 && enemyBulletsRef.current.length < 8) {
+          if (Math.random() < 0.025 && enemyBulletsRef.current.length < 8) {
             enemyBulletsRef.current.push({
               x: e.x,
               y: e.y + 10,
-              vx: (Math.random() - 0.5) * 1.5,
-              vy: 5 + waveRef.current * 0.4,
+              vx: (Math.random() - 0.5) * 1.2,
+              vy: 3.8 + waveRef.current * 0.3,
             });
           }
 
@@ -598,7 +598,7 @@ export default function GalagaPage() {
             e.y = -30;
           }
         } else if (e.state === "returning") {
-          e.y += dt * 180;
+          e.y += dt * 110;
           e.x += (targetX - e.x) * 0.06;
           if (e.y >= targetY) {
             e.state = "in_grid";

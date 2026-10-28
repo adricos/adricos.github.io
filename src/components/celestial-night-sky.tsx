@@ -188,9 +188,10 @@ export function CelestialNightSky() {
       const dt = (now - lastTime) / 1000;
       lastTime = now;
 
-      // Advance celestial time when hovering the spiral
+      // Advance celestial time when hovering or holding the spiral
       if (isAdvancingRef.current) {
-        const hoursPerSec = 3.0;
+        // Calibrated smooth pace: gives user time to enjoy the dawn cycle
+        const hoursPerSec = 1.4;
         hourRef.current = (hourRef.current + dt * hoursPerSec) % 24;
 
         // When morning daylight is reached, trigger warp into the secret vector arcade
@@ -203,7 +204,7 @@ export function CelestialNightSky() {
           setIsWarping(true);
           setTimeout(() => {
             router.push("/galaga");
-          }, 350);
+          }, 450);
         }
       }
 

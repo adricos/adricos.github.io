@@ -172,6 +172,115 @@ function MagritteClouds() {
   );
 }
 
+interface StrikeKeypoint {
+  t: number;
+  sky: number;
+  core: number;
+  amb: number;
+}
+
+/**
+ * Generates an unpredictable random lightning profile with variable duration.
+ * Durations range from quick snappy strikes (~180ms) to prolonged rumbling thunderstorms (~1700ms).
+ */
+function generateStrikeKeypoints(): StrikeKeypoint[] {
+  const rand = Math.random();
+  let duration: number;
+  if (rand < 0.35) {
+    // Snappy split-second flash: 180ms - 380ms
+    duration = Math.random() * 200 + 180;
+  } else if (rand < 0.70) {
+    // Medium multi-strike: 420ms - 800ms
+    duration = Math.random() * 380 + 420;
+  } else {
+    // Extended rolling thunderstorm flash: 850ms - 1700ms
+    duration = Math.random() * 850 + 850;
+  }
+
+  const points: StrikeKeypoint[] = [];
+
+  // Phase 1: Initial sudden leader burst
+  points.push({ t: 0, sky: 1.0, core: 0.9, amb: 0.28 });
+  const firstDipT = Math.min(40, duration * 0.12);
+  points.push({ t: firstDipT, sky: 0.3, core: 0.05, amb: 0.08 });
+
+  // Phase 2: Active multi-pulse flickers
+  const decayDuration = Math.min(450, Math.max(120, duration * 0.32));
+  const activeEnd = duration - decayDuration;
+
+  let pulseCount = 1;
+  if (duration > 400) pulseCount = Math.floor(Math.random() * 2) + 2; // 2 to 3
+  if (duration > 850) pulseCount = Math.floor(Math.random() * 3) + 4; // 4 to 6
+
+  let currentT = firstDipT;
+  const timePerPulse = (activeEnd - currentT) / pulseCount;
+
+  for (let i = 0; i < pulseCount; i++) {
+    const peakT = currentT + timePerPulse * (0.3 + Math.random() * 0.2);
+    const dipT = currentT + timePerPulse;
+    const peakIntensity = 0.8 + Math.random() * 0.2; // 0.8 to 1.0
+    const dipIntensity = 0.3 + Math.random() * 0.3; // 0.3 to 0.6
+
+    points.push({
+      t: peakT,
+      sky: peakIntensity,
+      core: i === 0 ? 0.35 : (Math.random() < 0.35 ? 0.2 : 0),
+      amb: 0.18 + peakIntensity * 0.1,
+    });
+
+    if (i < pulseCount - 1) {
+      points.push({
+        t: dipT,
+        sky: dipIntensity,
+        core: 0,
+        amb: 0.06 + dipIntensity * 0.05,
+      });
+    }
+    currentT = dipT;
+  }
+
+  // Phase 3: Final smooth afterglow decay to solid white
+  points.push({ t: duration, sky: 0, core: 0, amb: 0 });
+
+  return points;
+}
+
+function sampleStrike(points: StrikeKeypoint[], elapsed: number) {
+  const last = points[points.length - 1];
+  if (elapsed >= last.t) {
+    return { sky: 0, core: 0, amb: 0, isDone: true };
+  }
+
+  let i = 0;
+  while (i < points.length - 1 && points[i + 1].t <= elapsed) {
+    i++;
+  }
+  const p0 = points[i];
+  const p1 = points[i + 1];
+  const dt = p1.t - p0.t;
+  const progress = dt <= 0 ? 1 : (elapsed - p0.t) / dt;
+
+  const isFinalDecay = i === points.length - 2;
+
+  if (isFinalDecay) {
+    // Quadratic smooth dissipation curve
+    const decayFactor = 1 - Math.pow(progress, 1.8);
+    return {
+      sky: p0.sky * decayFactor,
+      core: 0,
+      amb: p0.amb * decayFactor,
+      isDone: false,
+    };
+  }
+
+  return {
+    sky: p0.sky + (p1.sky - p0.sky) * progress,
+    core: p0.core + (p1.core - p0.core) * progress,
+    amb: p0.amb + (p1.amb - p0.amb) * progress,
+    isDone: false,
+  };
+}
+
 export function MagritteLightningPipe() {
   const router = useRouter();
   const skyRef = useRef<SVGGElement>(null);
@@ -195,6 +304,7 @@ export function MagritteLightningPipe() {
     }
 
     const startTime = performance.now();
+    const strikePoints = generateStrikeKeypoints();
 
     // Randomize cloud drift position on each strike for a living world glimpse
     if (cloudsDriftRef.current) {
@@ -207,60 +317,19 @@ export function MagritteLightningPipe() {
       if (isDestroyedRef.current) return;
       const elapsed = now - startTime;
 
-      let skyOpacity = 0;
-      let flashCoreOpacity = 0;
-      let ambientOpacity = 0;
-
-      if (elapsed < 35) {
-        // Phase 1: Sudden leader stroke (blinding white-blue strike)
-        skyOpacity = 1.0;
-        flashCoreOpacity = 0.85;
-        ambientOpacity = 0.25;
-      } else if (elapsed < 75) {
-        // Phase 2: First dip
-        skyOpacity = 0.35;
-        flashCoreOpacity = 0.05;
-        ambientOpacity = 0.08;
-      } else if (elapsed < 140) {
-        // Phase 3: Massive return stroke (pure Magritte daytime sky illumination!)
-        skyOpacity = 1.0;
-        flashCoreOpacity = 0.35;
-        ambientOpacity = 0.28;
-      } else if (elapsed < 185) {
-        // Phase 4: Micro-flicker
-        skyOpacity = 0.55;
-        flashCoreOpacity = 0.0;
-        ambientOpacity = 0.12;
-      } else if (elapsed < 230) {
-        // Phase 5: Re-strike burst
-        skyOpacity = 0.85;
-        flashCoreOpacity = 0.15;
-        ambientOpacity = 0.2;
-      } else if (elapsed < 580) {
-        // Phase 6: Smooth exponential decay / afterglow back to solid white
-        const decayProgress = (elapsed - 230) / 350;
-        const decayCurve = Math.pow(1 - decayProgress, 2);
-        skyOpacity = 0.85 * decayCurve;
-        flashCoreOpacity = 0;
-        ambientOpacity = 0.2 * decayCurve;
-      } else {
-        // Strike sequence finished
-        skyOpacity = 0;
-        flashCoreOpacity = 0;
-        ambientOpacity = 0;
-      }
+      const sample = sampleStrike(strikePoints, elapsed);
 
       if (skyRef.current) {
-        skyRef.current.style.opacity = skyOpacity.toFixed(3);
+        skyRef.current.style.opacity = sample.sky.toFixed(3);
       }
       if (flashCoreRef.current) {
-        flashCoreRef.current.style.opacity = flashCoreOpacity.toFixed(3);
+        flashCoreRef.current.style.opacity = sample.core.toFixed(3);
       }
       if (ambientFlashRef.current) {
-        ambientFlashRef.current.style.opacity = ambientOpacity.toFixed(3);
+        ambientFlashRef.current.style.opacity = sample.amb.toFixed(3);
       }
 
-      if (elapsed < 580) {
+      if (!sample.isDone) {
         animFrameRef.current = requestAnimationFrame(updateFrame);
       } else {
         animFrameRef.current = null;

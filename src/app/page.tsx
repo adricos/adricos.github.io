@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { CelestialNightSky } from "../components/celestial-night-sky";
 import { TiltCard } from "../components/tilt-card";
 import { AvatarVideo } from "../components/avatar-video";
 import { InteractiveSpiral } from "../components/interactive-spiral";
 import { LensSwitcher } from "../components/lens-switcher";
-import { PipeSvg } from "./pipe/pipe-svg";
+import { InteractivePipe } from "../components/interactive-pipe";
 
 function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -111,13 +110,7 @@ export default function Home() {
           </div>
 
           {/* Little pipe at bottom right inside container going to /pipe */}
-          <Link
-            href="/pipe"
-            aria-label="Ceci n'est pas une pipe"
-            className="absolute bottom-5 right-5 sm:bottom-7 sm:right-7 md:bottom-9 md:right-9 inline-flex items-center justify-center p-1 rounded-full text-zinc-400 hover:text-zinc-800 dark:text-zinc-600 dark:hover:text-zinc-300 transition-all opacity-40 hover:opacity-100 hover:scale-110 active:scale-95"
-          >
-            <PipeSvg className="h-4 w-auto sm:h-5 text-current" />
-          </Link>
+          <InteractivePipe />
         </div>
       </main>
     </div>

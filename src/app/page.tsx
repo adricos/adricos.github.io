@@ -46,12 +46,12 @@ function MailIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export default function Home() {
   return (
-    <div className="relative min-h-screen h-[100dvh] max-h-screen overflow-hidden flex flex-col items-center justify-center p-2 sm:p-4">
+    <div className="relative min-h-[100dvh] w-full overflow-x-hidden overflow-y-auto flex flex-col items-center justify-center p-2 sm:p-4 py-4 sm:py-6">
       {/* Night Sky: Real 360° Milky Way, Dawn cycle on spiral hover */}
       <CelestialNightSky />
 
       {/* Main Presentation Card (scaled to 150% desktop size matching ~750px width) */}
-      <main className="flex flex-col items-center justify-center text-center max-w-xl sm:max-w-2xl md:max-w-3xl mx-auto z-10 w-full px-2 sm:px-4">
+      <main className="flex flex-col items-center justify-center text-center max-w-xl sm:max-w-2xl md:max-w-3xl mx-auto z-10 w-full px-2 sm:px-4 my-auto">
         <div className="relative w-full rounded-3xl border border-white/30 dark:border-white/10 bg-white/75 dark:bg-zinc-950/75 backdrop-blur-xl shadow-2xl p-5 sm:p-7 md:p-9 space-y-4 sm:space-y-5">
           {/* Interactive 3D tilt avatar video */}
           <TiltCard maxTilt={10}>

@@ -14,8 +14,10 @@ import { useRef, useEffect, useState, useCallback } from "react";
  *     based on the finger/cursor distance to the right edge of the screen.
  *   - Releasing touch or leaving window: Smoothly glides back to 50% (direct frontal eye contact).
  *
- * All frames are interpolated smoothly via requestAnimationFrame using frame-rate independent
- * exponential smoothing, ensuring zero jitter, no autoplay, and zero CPU usage when idle.
+ * Full WebKit / Safari compatibility:
+ *   - Underlying persistent poster image prevents any blank state while video initializes.
+ *   - Primed decoder for iOS Safari.
+ *   - Cached metadata check on mount for bfcache and fast-loading browsers.
  */
 export function AvatarVideo() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -94,6 +96,47 @@ export function AvatarVideo() {
     [animateScrub]
   );
 
+  const handleLoadedMetadata = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !video.duration || isNaN(video.duration)) {
+      setHasError(true);
+      return;
+    }
+
+    const duration = video.duration;
+    durationRef.current = duration;
+
+    const midPoint = duration / 2;
+    targetTimeRef.current = midPoint;
+    video.currentTime = midPoint;
+
+    // Safari fix: in iOS Safari, an unstarted video may stay blank when setting currentTime.
+    // Priming the hardware decoder with muted play().then(() => pause()) ensures the frame paints!
+    video.muted = true;
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          video.pause();
+        })
+        .catch(() => {
+          video.pause();
+        });
+    }
+
+    setHasMetadata(true);
+  }, []);
+
+  // Check if video is already ready on mount (fixes Safari cached metadata / bfcache bug)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (video.readyState >= 1) {
+      handleLoadedMetadata();
+    }
+  }, [handleLoadedMetadata]);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -145,7 +188,7 @@ export function AvatarVideo() {
 
     // Desktop pointer movement
     const handlePointerMove = (e: PointerEvent) => {
-      if (e.pointerType === "touch") return; // Touch handled by touch events
+      if (e.pointerType === "touch") return;
       handlePosition(e.clientX, e.clientY);
     };
 
@@ -191,24 +234,6 @@ export function AvatarVideo() {
     };
   }, [hasMetadata, setTargetRatio, cancelAnimation]);
 
-  const handleLoadedMetadata = () => {
-    const video = videoRef.current;
-    if (!video || !video.duration || isNaN(video.duration)) {
-      setHasError(true);
-      return;
-    }
-
-    const duration = video.duration;
-    durationRef.current = duration;
-
-    const midPoint = duration / 2;
-    targetTimeRef.current = midPoint;
-    video.currentTime = midPoint;
-    video.pause();
-
-    setHasMetadata(true);
-  };
-
   const handleClick = () => {
     const duration = durationRef.current;
     if (duration <= 0) return;
@@ -242,6 +267,15 @@ export function AvatarVideo() {
       }}
       aria-label="Interactive Avatar. Move cursor or press on mobile to control head rotation."
     >
+      {/* 1. Underlying persistent poster image: guarantees 0ms immediate display on Safari while video initializes */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/images/avatar/pose-1.jpg"
+        alt="Adrian Costa"
+        className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
+      />
+
+      {/* 2. Video element with full WebKit/Safari inline attributes */}
       <video
         ref={videoRef}
         src="/videos/avatar.mp4"
@@ -250,20 +284,14 @@ export function AvatarVideo() {
         playsInline
         preload="auto"
         onLoadedMetadata={handleLoadedMetadata}
+        onCanPlay={() => {
+          if (!hasMetadata) handleLoadedMetadata();
+        }}
         onError={() => setHasError(true)}
-        className={`h-full w-full object-cover select-none pointer-events-none transition-opacity duration-300 ${
+        className={`relative h-full w-full object-cover select-none pointer-events-none transition-opacity duration-300 ${
           hasError ? "opacity-0" : "opacity-100"
         }`}
       />
-
-      {hasError && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src="/images/avatar/pose-1.jpg"
-          alt="Adrian Costa"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      )}
     </div>
   );
 }

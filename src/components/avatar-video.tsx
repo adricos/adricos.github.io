@@ -2,29 +2,28 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 
-interface PoseTarget {
-  id: number;
+interface StepTarget {
+  poseId: number;
   name: string;
   time: number;
 }
 
-// Pose 3 extended to 3.95s for a longer, more relaxed hold looking to the right
-const POSE_MAP: Record<number, PoseTarget> = {
-  1: { id: 1, name: "Front Neutral", time: 0.92 },
-  2: { id: 2, name: "Slight Left", time: 2.25 },
-  3: { id: 3, name: "Slight Right", time: 3.95 },
-};
-
-// Ping-pong sequence: 1 -> 2 -> 3 -> 2 -> (loops back to 1)
-const SEQUENCE: number[] = [1, 2, 3, 2];
+// Seamless 1 -> 2 -> 3 -> 2 -> 1 video timeline (169 frames @ 24fps, 7.04s)
+// Pose 1 (Center Front) -> Pose 2 (Left) -> Pose 3 (Right) -> Pose 2 (Left) -> Pose 1 (Center Front)
+const STEPS: StepTarget[] = [
+  { poseId: 1, name: "Front Neutral", time: 0.92 },
+  { poseId: 2, name: "Slight Left", time: 2.25 },
+  { poseId: 3, name: "Slight Right", time: 3.96 },
+  { poseId: 2, name: "Slight Left (Return)", time: 5.67 },
+  { poseId: 1, name: "Front Neutral (Return)", time: 7.00 },
+];
 
 export function AvatarVideo() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [seqIdx, setSeqIdx] = useState(0);
-  const [isFading, setIsFading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
   const cleanupWatchRef = useRef<(() => void) | null>(null);
 
-  const currentPose = POSE_MAP[SEQUENCE[seqIdx]];
+  const activePose = STEPS[currentStep];
 
   // Frame-accurate stopping helper using requestVideoFrameCallback
   const playUntilTime = useCallback((targetTime: number, onDone?: () => void) => {
@@ -91,9 +90,9 @@ export function AvatarVideo() {
     video.muted = true;
     video.playsInline = true;
 
-    // Initial load: plays smoothly into Pose 1 (Front Neutral) and holds
-    playUntilTime(POSE_MAP[1].time, () => {
-      setSeqIdx(0);
+    // Initial page load: Plays into Pose 1 (0.92s) and settles
+    playUntilTime(STEPS[0].time, () => {
+      setCurrentStep(0);
     });
 
     return () => {
@@ -105,40 +104,29 @@ export function AvatarVideo() {
 
   const handleNextPose = () => {
     const video = videoRef.current;
-    if (!video || isFading) return;
+    if (!video) return;
 
-    const nextSeqIdx = (seqIdx + 1) % SEQUENCE.length;
-    setSeqIdx(nextSeqIdx);
-    const targetPose = POSE_MAP[SEQUENCE[nextSeqIdx]];
+    let nextStep = currentStep + 1;
 
-    // Moving forward on the timeline (1 -> 2, 2 -> 3): animate continuously via video motion
-    if (targetPose.time > video.currentTime && targetPose.time - video.currentTime < 2.5) {
-      playUntilTime(targetPose.time);
-    } else {
-      // Moving backward (3 -> 2, 2 -> 1): execute a smooth 200ms cross-dissolve to eliminate hard snaps
-      setIsFading(true);
-      setTimeout(() => {
-        video.currentTime = targetPose.time;
-        video.pause();
-
-        const handleSeeked = () => {
-          setIsFading(false);
-        };
-        video.addEventListener("seeked", handleSeeked, { once: true });
-
-        // Safety fallback to restore opacity
-        setTimeout(() => setIsFading(false), 200);
-      }, 180);
+    // If we were at the end of the return (Pose 1 at 7.00s), wrap to Step 1 (Pose 2 at 2.25s)
+    if (nextStep >= STEPS.length) {
+      // 7.00s and 0.92s are identical Pose 1 frames, so reset time cleanly with zero visual jump
+      video.currentTime = STEPS[0].time;
+      nextStep = 1;
     }
+
+    setCurrentStep(nextStep);
+    const target = STEPS[nextStep];
+
+    // Every step moves forward in video time with real 24fps motion
+    playUntilTime(target.time);
   };
 
   return (
     <div
       onClick={handleNextPose}
       className="relative h-full w-full overflow-hidden select-none cursor-pointer group"
-      title={`Pose ${currentPose.id}: ${currentPose.name} — Click to cycle (${SEQUENCE.map(
-        (id, idx) => (idx === seqIdx ? `[${id}]` : id)
-      ).join(" → ")})`}
+      title={`Current: ${activePose.name} (Pose ${activePose.poseId}) — Click to cycle (1 ➔ 2 ➔ 3 ➔ 2 ➔ 1)`}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -147,7 +135,7 @@ export function AvatarVideo() {
           handleNextPose();
         }
       }}
-      aria-label={`Interactive Avatar — ${currentPose.name}. Click to change pose.`}
+      aria-label={`Interactive Avatar — ${activePose.name}. Click to cycle pose.`}
     >
       <video
         ref={videoRef}
@@ -157,9 +145,7 @@ export function AvatarVideo() {
         muted
         playsInline
         preload="auto"
-        className={`h-full w-full object-cover transition-opacity duration-300 ease-in-out ${
-          isFading ? "opacity-0" : "opacity-100"
-        }`}
+        className="h-full w-full object-cover select-none"
       />
     </div>
   );

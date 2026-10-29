@@ -97,18 +97,21 @@ export default function GalagaPage() {
   const restartGameRef = useRef<() => void>(() => {});
   const triggerEmpBombRef = useRef<() => void>(() => {});
 
-  // High score from local storage
+  // High score from local storage (deferred via rAF to avoid cascading renders in React 19)
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("galaga_vector_highscore");
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed)) {
-          highScoreRef.current = parsed;
-          setHighScore(parsed);
+    const frameId = requestAnimationFrame(() => {
+      try {
+        const saved = localStorage.getItem("galaga_vector_highscore");
+        if (saved) {
+          const parsed = parseInt(saved, 10);
+          if (!isNaN(parsed)) {
+            highScoreRef.current = parsed;
+            setHighScore(parsed);
+          }
         }
-      }
-    } catch {}
+      } catch {}
+    });
+    return () => cancelAnimationFrame(frameId);
   }, []);
 
   // Trigger EMP Bomb

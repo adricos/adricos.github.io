@@ -329,7 +329,6 @@ export function AvatarVideo() {
       onClick={handleClick}
       onPointerEnter={() => setTargetRatio(0.5)}
       className="relative h-full w-full overflow-hidden select-none cursor-pointer group bg-zinc-950"
-      title="Interactive Avatar — Head rotation tracks cursor or mobile touch position"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {

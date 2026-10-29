@@ -42,7 +42,7 @@ export function AvatarVideo() {
     <video
       ref={videoRef}
       src="/videos/avatar.mp4"
-      poster="/images/avatar-poster.jpg"
+      poster="/images/avatar-final.jpg"
       autoPlay
       muted
       playsInline

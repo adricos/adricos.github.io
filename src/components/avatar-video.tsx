@@ -21,6 +21,7 @@ const STEPS: StepTarget[] = [
 export function AvatarVideo() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentStep, setCurrentStep] = useState(0);
+  const isHoveredRef = useRef(false);
   const cleanupWatchRef = useRef<(() => void) | null>(null);
 
   const activePose = STEPS[currentStep];
@@ -37,20 +38,8 @@ export function AvatarVideo() {
 
     let active = true;
 
-    const handleFrame = (
-      _now: DOMHighResTimeStamp,
-      metadata?: { mediaTime: number }
-    ) => {
+    const requestNextFrame = () => {
       if (!active || !video) return;
-      const curTime = metadata?.mediaTime ?? video.currentTime;
-
-      if (curTime >= targetTime) {
-        video.pause();
-        active = false;
-        if (onDone) onDone();
-        return;
-      }
-
       if ("requestVideoFrameCallback" in video) {
         (
           video as HTMLVideoElement & {
@@ -64,19 +53,38 @@ export function AvatarVideo() {
       }
     };
 
-    video.play().catch(() => {});
+    const handleFrame = (
+      _now: DOMHighResTimeStamp,
+      metadata?: { mediaTime: number }
+    ) => {
+      if (!active || !video) return;
 
-    if ("requestVideoFrameCallback" in video) {
-      (
-        video as HTMLVideoElement & {
-          requestVideoFrameCallback: (
-            cb: (now: DOMHighResTimeStamp, meta: { mediaTime: number }) => void
-          ) => number;
+      // While hovered with mouse: loop continuously through 1 -> 2 -> 3 -> 2 -> 1 motion
+      if (isHoveredRef.current) {
+        if (video.currentTime >= 7.00) {
+          video.currentTime = STEPS[0].time; // Loop back to 0.92s cleanly
         }
-      ).requestVideoFrameCallback(handleFrame);
-    } else {
-      requestAnimationFrame(() => handleFrame(performance.now()));
-    }
+        if (video.paused) {
+          video.play().catch(() => {});
+        }
+        requestNextFrame();
+        return;
+      }
+
+      // While not hovered: stop on the exact target resting frame
+      const curTime = metadata?.mediaTime ?? video.currentTime;
+      if (curTime >= targetTime) {
+        video.pause();
+        active = false;
+        if (onDone) onDone();
+        return;
+      }
+
+      requestNextFrame();
+    };
+
+    video.play().catch(() => {});
+    requestNextFrame();
 
     cleanupWatchRef.current = () => {
       active = false;
@@ -102,31 +110,64 @@ export function AvatarVideo() {
     };
   }, [playUntilTime]);
 
+  const handlePointerEnter = (e: React.PointerEvent) => {
+    // Only engage hover loop for actual mouse pointers (prevents sticking on touchscreens)
+    if (e.pointerType === "touch") return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    isHoveredRef.current = true;
+    playUntilTime(STEPS[2].time);
+  };
+
+  const handlePointerLeave = (e: React.PointerEvent) => {
+    if (e.pointerType === "touch") return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    isHoveredRef.current = false;
+
+    // Settle gracefully on the next upcoming resting pose
+    const curTime = video.currentTime;
+    const nextStepIdx = STEPS.findIndex((s) => s.time > curTime);
+    if (nextStepIdx === -1) {
+      video.currentTime = STEPS[0].time;
+      video.pause();
+      setCurrentStep(0);
+      return;
+    }
+
+    setCurrentStep(nextStepIdx);
+    playUntilTime(STEPS[nextStepIdx].time);
+  };
+
   const handleNextPose = () => {
     const video = videoRef.current;
     if (!video) return;
 
+    // A direct click temporarily disables the hover loop so the user can step manually
+    isHoveredRef.current = false;
+
     let nextStep = currentStep + 1;
 
-    // If we were at the end of the return (Pose 1 at 7.00s), wrap to Step 1 (Pose 2 at 2.25s)
+    // If we reached the end of the return (7.00s), wrap to Step 1 (2.25s)
     if (nextStep >= STEPS.length) {
-      // 7.00s and 0.92s are identical Pose 1 frames, so reset time cleanly with zero visual jump
       video.currentTime = STEPS[0].time;
       nextStep = 1;
     }
 
     setCurrentStep(nextStep);
     const target = STEPS[nextStep];
-
-    // Every step moves forward in video time with real 24fps motion
     playUntilTime(target.time);
   };
 
   return (
     <div
       onClick={handleNextPose}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
       className="relative h-full w-full overflow-hidden select-none cursor-pointer group"
-      title={`Current: ${activePose.name} (Pose ${activePose.poseId}) — Click to cycle (1 ➔ 2 ➔ 3 ➔ 2 ➔ 1)`}
+      title={`Current: ${activePose.name} (Pose ${activePose.poseId}) — Hover or click to animate`}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -135,7 +176,7 @@ export function AvatarVideo() {
           handleNextPose();
         }
       }}
-      aria-label={`Interactive Avatar — ${activePose.name}. Click to cycle pose.`}
+      aria-label={`Interactive Avatar — ${activePose.name}. Hover or click to animate.`}
     >
       <video
         ref={videoRef}

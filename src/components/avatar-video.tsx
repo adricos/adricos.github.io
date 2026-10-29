@@ -5,13 +5,14 @@ import { useRef, useEffect, useState, useCallback } from "react";
 /**
  * InteractiveAvatar
  *
- * Implements a cursor-controlled interactive avatar using a single pre-rendered video.
- * Dynamic distance-based tracking:
+ * Implements a cursor- and touch-controlled interactive avatar using a single pre-rendered video.
+ * Dynamic distance-based tracking for both desktop cursor and mobile touch press:
  *   - Inside container bounds: Stays at 50% (looking forward, direct eye contact with subtle warm smile).
  *   - Left of container: Proportional continuous rotation from 50% down to 0% (looking left)
- *     based on the cursor's distance to the left edge of the screen.
+ *     based on the finger/cursor distance to the left edge of the screen.
  *   - Right of container: Proportional continuous rotation from 50% up to 100% (looking right)
- *     based on the cursor's distance to the right edge of the screen.
+ *     based on the finger/cursor distance to the right edge of the screen.
+ *   - Releasing touch or leaving window: Smoothly glides back to 50% (direct frontal eye contact).
  *
  * All frames are interpolated smoothly via requestAnimationFrame using frame-rate independent
  * exponential smoothing, ensuring zero jitter, no autoplay, and zero CPU usage when idle.
@@ -29,11 +30,6 @@ export function AvatarVideo() {
   const lastRafTimeRef = useRef<number>(0);
   const prefersReducedMotionRef = useRef<boolean>(false);
   const animateScrubRef = useRef<(() => void) | null>(null);
-
-  // Mobile swipe gestures
-  const touchStartXRef = useRef<number | null>(null);
-  const touchStartYRef = useRef<number | null>(null);
-  const isSwipingRef = useRef(false);
 
   const cancelAnimation = useCallback(() => {
     if (rafIdRef.current !== null) {
@@ -110,17 +106,15 @@ export function AvatarVideo() {
     }
   }, []);
 
+  // Window-level tracking for both desktop cursor and mobile touch press
   useEffect(() => {
     if (!hasMetadata) return;
 
-    const handlePointerMove = (e: PointerEvent) => {
-      if (e.pointerType === "touch") return;
-
+    const handlePosition = (clientX: number, clientY: number) => {
       const container = containerRef.current;
       if (!container) return;
 
       const rect = container.getBoundingClientRect();
-      const { clientX, clientY } = e;
 
       // Inside container: strictly 50% (direct frontal eye contact with smile)
       const isInside =
@@ -149,16 +143,50 @@ export function AvatarVideo() {
       }
     };
 
+    // Desktop pointer movement
+    const handlePointerMove = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return; // Touch handled by touch events
+      handlePosition(e.clientX, e.clientY);
+    };
+
     const handleMouseLeaveDoc = () => {
+      setTargetRatio(0.5);
+    };
+
+    // Mobile touch tracking: detect where the finger is pressing across the screen
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        handlePosition(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        handlePosition(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      // Finger released: return smoothly to frontal smile
       setTargetRatio(0.5);
     };
 
     window.addEventListener("pointermove", handlePointerMove);
     document.addEventListener("mouseleave", handleMouseLeaveDoc);
 
+    // Passive touch listeners to track finger position without blocking native page scroll
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
       document.removeEventListener("mouseleave", handleMouseLeaveDoc);
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchEnd);
       cancelAnimation();
     };
   }, [hasMetadata, setTargetRatio, cancelAnimation]);
@@ -181,54 +209,7 @@ export function AvatarVideo() {
     setHasMetadata(true);
   };
 
-  // Mobile swipe event handlers
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
-    touchStartXRef.current = e.touches[0].clientX;
-    touchStartYRef.current = e.touches[0].clientY;
-    isSwipingRef.current = false;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartXRef.current === null || e.touches.length !== 1) return;
-
-    const touch = e.touches[0];
-    const dx = touch.clientX - touchStartXRef.current;
-    const dy = touch.clientY - (touchStartYRef.current ?? touch.clientY);
-
-    // If gesture is predominantly vertical, allow native page scrolling
-    if (!isSwipingRef.current && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
-      touchStartXRef.current = null;
-      return;
-    }
-
-    if (Math.abs(dx) > 6) {
-      isSwipingRef.current = true;
-    }
-
-    if (isSwipingRef.current) {
-      // 100px swipe = 0.5 ratio deflection (turns from center to left or right)
-      const maxSwipe = 100;
-      const deltaRatio = Math.max(-0.5, Math.min(0.5, (dx / maxSwipe) * 0.5));
-      setTargetRatio(0.5 + deltaRatio);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (isSwipingRef.current) {
-      // Gracefully ease back to frontal smile
-      setTargetRatio(0.5);
-    }
-    touchStartXRef.current = null;
-    touchStartYRef.current = null;
-    setTimeout(() => {
-      isSwipingRef.current = false;
-    }, 50);
-  };
-
   const handleClick = () => {
-    if (isSwipingRef.current) return;
-
     const duration = durationRef.current;
     if (duration <= 0) return;
 
@@ -249,12 +230,8 @@ export function AvatarVideo() {
       ref={containerRef}
       onClick={handleClick}
       onPointerEnter={() => setTargetRatio(0.5)}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
-      className="relative h-full w-full overflow-hidden select-none cursor-pointer group bg-zinc-950 touch-pan-y"
-      title="Interactive Avatar — Head rotation tracks cursor or mobile swipe"
+      className="relative h-full w-full overflow-hidden select-none cursor-pointer group bg-zinc-950"
+      title="Interactive Avatar — Head rotation tracks cursor or mobile touch position"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -263,7 +240,7 @@ export function AvatarVideo() {
           handleClick();
         }
       }}
-      aria-label="Interactive Avatar. Move cursor left/right or swipe on mobile to control head rotation."
+      aria-label="Interactive Avatar. Move cursor or press on mobile to control head rotation."
     >
       <video
         ref={videoRef}

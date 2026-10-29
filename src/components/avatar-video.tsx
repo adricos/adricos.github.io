@@ -1,28 +1,85 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 
-interface PoseInfo {
-  id: number;
+interface PoseTarget {
   name: string;
   time: number;
-  image: string;
 }
 
-const POSES: PoseInfo[] = [
-  { id: 1, name: "Front Neutral", time: 0.92, image: "/images/avatar/pose-1.jpg" },
-  { id: 2, name: "Slight Left", time: 2.25, image: "/images/avatar/pose-2.jpg" },
-  { id: 3, name: "Slight Right", time: 3.29, image: "/images/avatar/pose-3.jpg" },
-  { id: 4, name: "Looking Upward", time: 4.92, image: "/images/avatar/pose-4.jpg" },
-  { id: 5, name: "Arms Crossed", time: 6.62, image: "/images/avatar/pose-5.jpg" },
-  { id: 6, name: "Front Smile", time: 7.46, image: "/images/avatar/pose-6.jpg" },
+const POSES: PoseTarget[] = [
+  { name: "Front Neutral", time: 0.92 },
+  { name: "Slight Left", time: 2.25 },
+  { name: "Slight Right", time: 3.62 },
+  { name: "Looking Upward", time: 4.92 },
+  { name: "Arms Crossed", time: 6.62 },
+  { name: "Front Smile", time: 7.75 },
 ];
 
 export function AvatarVideo() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [prevImage, setPrevImage] = useState("/images/avatar/pose-1.jpg");
+  const [currentPoseIdx, setCurrentPoseIdx] = useState(0);
   const [isFading, setIsFading] = useState(false);
+  const cleanupWatchRef = useRef<(() => void) | null>(null);
+
+  // Frame-accurate stopping helper using requestVideoFrameCallback (exact vsync timing)
+  const playUntilTime = useCallback((targetTime: number, onDone?: () => void) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (cleanupWatchRef.current) {
+      cleanupWatchRef.current();
+      cleanupWatchRef.current = null;
+    }
+
+    let active = true;
+
+    // Use requestVideoFrameCallback for exact hardware decoder frame synchronization
+    const handleFrame = (
+      _now: DOMHighResTimeStamp,
+      metadata?: { mediaTime: number }
+    ) => {
+      if (!active || !video) return;
+      const curTime = metadata?.mediaTime ?? video.currentTime;
+
+      if (curTime >= targetTime) {
+        video.pause();
+        active = false;
+        if (onDone) onDone();
+        return;
+      }
+
+      if ("requestVideoFrameCallback" in video) {
+        (
+          video as HTMLVideoElement & {
+            requestVideoFrameCallback: (
+              cb: (now: DOMHighResTimeStamp, meta: { mediaTime: number }) => void
+            ) => number;
+          }
+        ).requestVideoFrameCallback(handleFrame);
+      } else {
+        requestAnimationFrame(() => handleFrame(performance.now()));
+      }
+    };
+
+    video.play().catch(() => {});
+
+    if ("requestVideoFrameCallback" in video) {
+      (
+        video as HTMLVideoElement & {
+          requestVideoFrameCallback: (
+            cb: (now: DOMHighResTimeStamp, meta: { mediaTime: number }) => void
+          ) => number;
+        }
+      ).requestVideoFrameCallback(handleFrame);
+    } else {
+      requestAnimationFrame(() => handleFrame(performance.now()));
+    }
+
+    cleanupWatchRef.current = () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -31,54 +88,52 @@ export function AvatarVideo() {
     video.muted = true;
     video.playsInline = true;
 
-    // Initial load: play intro and settle gracefully on pose 1
-    const playPromise = video.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {});
-    }
+    // Initial page load: Play the full natural video sequence, landing on Pose 6 (Front Smile)
+    playUntilTime(POSES[POSES.length - 1].time, () => {
+      setCurrentPoseIdx(POSES.length - 1);
+    });
 
-    const timer = setTimeout(() => {
-      video.pause();
-    }, 1100);
-
-    return () => clearTimeout(timer);
-  }, []);
+    return () => {
+      if (cleanupWatchRef.current) {
+        cleanupWatchRef.current();
+      }
+    };
+  }, [playUntilTime]);
 
   const handleNextPose = () => {
     const video = videoRef.current;
     if (!video || isFading) return;
 
-    // Snapshot previous pose image to prevent any black flash
-    setPrevImage(POSES[currentIdx].image);
-    setIsFading(true);
+    const nextIdx = (currentPoseIdx + 1) % POSES.length;
+    setCurrentPoseIdx(nextIdx);
+    const targetPose = POSES[nextIdx];
 
-    const nextIdx = (currentIdx + 1) % POSES.length;
-    const nextPose = POSES[nextIdx];
-
-    // Smooth 220ms cross-dissolve to the next golden stable pose
-    setTimeout(() => {
-      video.currentTime = nextPose.time;
-      video.pause();
-      setCurrentIdx(nextIdx);
-
-      const handleSeeked = () => {
-        setIsFading(false);
-      };
-
-      video.addEventListener("seeked", handleSeeked, { once: true });
-
-      // Fallback timeout in case onseeked is delayed
+    // If moving forward in time from current position, animate continuously through the transition
+    if (targetPose.time > video.currentTime && targetPose.time - video.currentTime < 2.5) {
+      playUntilTime(targetPose.time);
+    } else {
+      // If looping back or seeking, execute a graceful cross-fade dissolve to eliminate harsh cuts
+      setIsFading(true);
       setTimeout(() => {
-        setIsFading(false);
-      }, 150);
-    }, 200);
+        video.currentTime = targetPose.time;
+        video.pause();
+
+        const handleSeeked = () => {
+          setIsFading(false);
+        };
+        video.addEventListener("seeked", handleSeeked, { once: true });
+
+        // Fallback in case seek event resolves quickly
+        setTimeout(() => setIsFading(false), 200);
+      }, 200);
+    }
   };
 
   return (
     <div
       onClick={handleNextPose}
       className="relative h-full w-full overflow-hidden select-none cursor-pointer group"
-      title={`Pose: ${POSES[currentIdx].name} — Click to switch pose`}
+      title={`Pose: ${POSES[currentPoseIdx].name} — Click to animate to next pose`}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -87,17 +142,8 @@ export function AvatarVideo() {
           handleNextPose();
         }
       }}
-      aria-label={`Interactive Avatar — ${POSES[currentIdx].name}. Click to change pose.`}
+      aria-label={`Interactive Avatar — ${POSES[currentPoseIdx].name}. Click to change pose.`}
     >
-      {/* Underlying cross-fade snapshot layer (guarantees seamless dissolve without black flash) */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={prevImage}
-        alt="Avatar previous pose"
-        className="absolute inset-0 h-full w-full object-cover pointer-events-none"
-      />
-
-      {/* Main video layer with silky CSS cross-dissolve */}
       <video
         ref={videoRef}
         src="/videos/avatar.mp4"
@@ -106,7 +152,7 @@ export function AvatarVideo() {
         muted
         playsInline
         preload="auto"
-        className={`relative z-10 h-full w-full object-cover transition-opacity duration-300 ease-in-out ${
+        className={`h-full w-full object-cover transition-opacity duration-300 ease-in-out ${
           isFading ? "opacity-0" : "opacity-100"
         }`}
       />

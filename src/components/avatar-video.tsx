@@ -30,6 +30,11 @@ export function AvatarVideo() {
   const prefersReducedMotionRef = useRef<boolean>(false);
   const animateScrubRef = useRef<(() => void) | null>(null);
 
+  // Mobile swipe gestures
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const isSwipingRef = useRef(false);
+
   const cancelAnimation = useCallback(() => {
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current);
@@ -176,7 +181,54 @@ export function AvatarVideo() {
     setHasMetadata(true);
   };
 
+  // Mobile swipe event handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+    isSwipingRef.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || e.touches.length !== 1) return;
+
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStartXRef.current;
+    const dy = touch.clientY - (touchStartYRef.current ?? touch.clientY);
+
+    // If gesture is predominantly vertical, allow native page scrolling
+    if (!isSwipingRef.current && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+      touchStartXRef.current = null;
+      return;
+    }
+
+    if (Math.abs(dx) > 6) {
+      isSwipingRef.current = true;
+    }
+
+    if (isSwipingRef.current) {
+      // 100px swipe = 0.5 ratio deflection (turns from center to left or right)
+      const maxSwipe = 100;
+      const deltaRatio = Math.max(-0.5, Math.min(0.5, (dx / maxSwipe) * 0.5));
+      setTargetRatio(0.5 + deltaRatio);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (isSwipingRef.current) {
+      // Gracefully ease back to frontal smile
+      setTargetRatio(0.5);
+    }
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+    setTimeout(() => {
+      isSwipingRef.current = false;
+    }, 50);
+  };
+
   const handleClick = () => {
+    if (isSwipingRef.current) return;
+
     const duration = durationRef.current;
     if (duration <= 0) return;
 
@@ -197,8 +249,12 @@ export function AvatarVideo() {
       ref={containerRef}
       onClick={handleClick}
       onPointerEnter={() => setTargetRatio(0.5)}
-      className="relative h-full w-full overflow-hidden select-none cursor-pointer group bg-zinc-950"
-      title="Interactive Avatar — Head rotation tracks cursor distance from center"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      className="relative h-full w-full overflow-hidden select-none cursor-pointer group bg-zinc-950 touch-pan-y"
+      title="Interactive Avatar — Head rotation tracks cursor or mobile swipe"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -207,7 +263,7 @@ export function AvatarVideo() {
           handleClick();
         }
       }}
-      aria-label="Interactive Avatar. Move cursor left or right to control head rotation."
+      aria-label="Interactive Avatar. Move cursor left/right or swipe on mobile to control head rotation."
     >
       <video
         ref={videoRef}

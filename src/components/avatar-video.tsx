@@ -14,8 +14,11 @@ import { useRef, useEffect, useState, useCallback } from "react";
  *     based on the finger/cursor distance to the right edge of the screen.
  *   - Releasing touch or leaving window: Smoothly glides back to 50% (direct frontal eye contact).
  *
- * Full WebKit / Safari compatibility:
- *   - Underlying persistent poster image prevents any blank state while video initializes.
+ * Full WebKit / Safari & Mobile Performance optimizations:
+ *   - In-memory Blob preloading: preloads the 480x480 all-intra video into RAM, eliminating HTTP byte-range seek latency.
+ *   - Seek throttling: non-blocking seek gate (!video.seeking) prevents decoder stall queues on mobile devices.
+ *   - WebKit fastSeek(): seeks directly to target keyframes without intermediate frame decoding.
+ *   - Underlying persistent poster image: guarantees 0ms immediate display on Safari while video initializes.
  *   - Primed decoder for iOS Safari.
  *   - Cached metadata check on mount for bfcache and fast-loading browsers.
  */
@@ -23,15 +26,45 @@ export function AvatarVideo() {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const [videoSrc, setVideoSrc] = useState<string>("/videos/avatar.mp4");
   const [hasMetadata, setHasMetadata] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const [hasError, setHasError] = useState(false);
 
   const durationRef = useRef<number>(0);
   const targetTimeRef = useRef<number>(0);
+  const smoothedTimeRef = useRef<number>(-1);
   const rafIdRef = useRef<number | null>(null);
   const lastRafTimeRef = useRef<number>(0);
   const prefersReducedMotionRef = useRef<boolean>(false);
   const animateScrubRef = useRef<(() => void) | null>(null);
+
+  // In-memory Blob preloading to eliminate mobile seeking latency and byte-range request stalls
+  useEffect(() => {
+    let active = true;
+    let blobUrl: string | null = null;
+
+    fetch("/videos/avatar.mp4")
+      .then((res) => {
+        if (!res.ok) throw new Error("Fetch failed");
+        return res.blob();
+      })
+      .then((blob) => {
+        if (!active) return;
+        blobUrl = URL.createObjectURL(blob);
+        setVideoSrc(blobUrl);
+      })
+      .catch(() => {
+        // Fallback remains "/videos/avatar.mp4"
+      });
+
+    return () => {
+      active = false;
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, []);
 
   const cancelAnimation = useCallback(() => {
     if (rafIdRef.current !== null) {
@@ -40,12 +73,23 @@ export function AvatarVideo() {
     }
   }, []);
 
+  const seekVideo = (video: HTMLVideoElement, time: number) => {
+    if (typeof (video as unknown as { fastSeek?: (t: number) => void }).fastSeek === "function") {
+      try {
+        (video as unknown as { fastSeek: (t: number) => void }).fastSeek(time);
+        return;
+      } catch {}
+    }
+    video.currentTime = time;
+  };
+
   const animateScrub = useCallback(() => {
     const video = videoRef.current;
     if (!video || durationRef.current <= 0) return;
 
     if (prefersReducedMotionRef.current) {
-      video.currentTime = targetTimeRef.current;
+      seekVideo(video, targetTimeRef.current);
+      smoothedTimeRef.current = targetTimeRef.current;
       cancelAnimation();
       return;
     }
@@ -54,22 +98,32 @@ export function AvatarVideo() {
     const dt = lastRafTimeRef.current > 0 ? Math.min((now - lastRafTimeRef.current) / 1000, 0.08) : 0.016;
     lastRafTimeRef.current = now;
 
-    const current = video.currentTime;
     const target = targetTimeRef.current;
-    const diff = target - current;
+    if (smoothedTimeRef.current < 0) {
+      smoothedTimeRef.current = video.currentTime || durationRef.current / 2;
+    }
+    const currentSmoothed = smoothedTimeRef.current;
+    const diff = target - currentSmoothed;
 
-    // Threshold ~15ms (less than 1 frame at 24fps)
+    // Threshold ~20ms (less than 1 frame at 24fps)
     if (Math.abs(diff) < 0.02) {
-      video.currentTime = target;
-      cancelAnimation();
-      return;
+      if (!video.seeking) {
+        seekVideo(video, target);
+        smoothedTimeRef.current = target;
+        cancelAnimation();
+        return;
+      }
     }
 
-    // Frame-rate independent exponential smoothing (lambda = 12 for responsive, natural human head movement)
-    const factor = 1 - Math.exp(-12 * dt);
-    const nextTime = current + diff * factor;
+    // Frame-rate independent exponential smoothing (lambda = 14 for responsive, natural human head movement)
+    const factor = 1 - Math.exp(-14 * dt);
+    const nextSmoothed = Math.max(0, Math.min(durationRef.current, currentSmoothed + diff * factor));
+    smoothedTimeRef.current = nextSmoothed;
 
-    video.currentTime = Math.max(0, Math.min(durationRef.current, nextTime));
+    // Non-blocking seek gate: only assign seek if decoder is not currently busy
+    if (!video.seeking) {
+      seekVideo(video, nextSmoothed);
+    }
 
     if (animateScrubRef.current) {
       rafIdRef.current = requestAnimationFrame(animateScrubRef.current);
@@ -107,8 +161,12 @@ export function AvatarVideo() {
     durationRef.current = duration;
 
     const midPoint = duration / 2;
-    targetTimeRef.current = midPoint;
-    video.currentTime = midPoint;
+    const initialTarget = targetTimeRef.current > 0 ? targetTimeRef.current : midPoint;
+    targetTimeRef.current = initialTarget;
+    if (smoothedTimeRef.current < 0) {
+      smoothedTimeRef.current = initialTarget;
+    }
+    seekVideo(video, initialTarget);
 
     // Safari fix: in iOS Safari, an unstarted video may stay blank when setting currentTime.
     // Priming the hardware decoder with muted play().then(() => pause()) ensures the frame paints!
@@ -118,13 +176,28 @@ export function AvatarVideo() {
       playPromise
         .then(() => {
           video.pause();
+          setIsReady(true);
         })
         .catch(() => {
           video.pause();
+          setIsReady(true);
         });
+    } else {
+      setIsReady(true);
     }
 
     setHasMetadata(true);
+  }, []);
+
+  const handleSeeked = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || durationRef.current <= 0) return;
+    setIsReady(true);
+
+    // If animation is idle but video is slightly off target, snap directly to target
+    if (rafIdRef.current === null && Math.abs(video.currentTime - targetTimeRef.current) > 0.02) {
+      seekVideo(video, targetTimeRef.current);
+    }
   }, []);
 
   // Check if video is already ready on mount (fixes Safari cached metadata / bfcache bug)
@@ -278,18 +351,21 @@ export function AvatarVideo() {
       {/* 2. Video element with full WebKit/Safari inline attributes */}
       <video
         ref={videoRef}
-        src="/videos/avatar.mp4"
+        src={videoSrc}
         poster="/images/avatar/pose-1.jpg"
         muted
         playsInline
         preload="auto"
+        autoPlay={false}
+        controls={false}
         onLoadedMetadata={handleLoadedMetadata}
         onCanPlay={() => {
           if (!hasMetadata) handleLoadedMetadata();
         }}
+        onSeeked={handleSeeked}
         onError={() => setHasError(true)}
         className={`relative h-full w-full object-cover select-none pointer-events-none transition-opacity duration-300 ${
-          hasError ? "opacity-0" : "opacity-100"
+          hasError || !isReady ? "opacity-0" : "opacity-100"
         }`}
       />
     </div>

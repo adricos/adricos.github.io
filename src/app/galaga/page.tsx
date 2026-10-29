@@ -571,13 +571,15 @@ export default function GalagaPage() {
           e.x = targetX;
           e.y = targetY;
 
-          if (Math.random() < 0.0008 * timeScale * Math.min(2.2, 1 + (waveRef.current - 1) * 0.2)) {
+          if (Math.random() < 0.0035 * timeScale * Math.min(2.5, 1 + (waveRef.current - 1) * 0.25)) {
             e.state = e.divePattern === "tractor" && Math.random() > 0.4 ? "tractor_beam" : "diving";
             e.diveProgress = 0;
             e.diveStartX = e.x;
             e.diveStartY = e.y;
             e.diveCurve = Math.random() > 0.5 ? 1 : -1;
             e.tractorTimer = 0;
+            e.hasFiredDive = false;
+            e.hasFiredDive2 = false;
 
             if (e.type === "boss" && e.divePattern === "escort") {
               const escorts = enemies.filter((other) => other.type === "butterfly" && other.state === "in_grid");
@@ -587,7 +589,24 @@ export default function GalagaPage() {
                 esc.diveStartX = esc.x;
                 esc.diveStartY = esc.y;
                 esc.diveCurve = idx === 0 ? -1 : 1;
+                esc.hasFiredDive = false;
+                esc.hasFiredDive2 = false;
               });
+            }
+          }
+
+          // Harassing fire from formation
+          if (Math.random() < 0.002 * timeScale && enemyBulletsRef.current.length < 18) {
+            if (Math.abs(player.x - e.x) < 130) {
+              const angle = Math.atan2(player.y - e.y, player.x - e.x);
+              enemyBulletsRef.current.push({
+                x: e.x,
+                y: e.y + 12,
+                vx: Math.cos(angle) * 3.0,
+                vy: Math.sin(angle) * 3.0,
+                type: "standard",
+              });
+              arcadeAudio.playEnemyLaser();
             }
           }
         } else if (e.state === "tractor_beam") {
@@ -630,36 +649,73 @@ export default function GalagaPage() {
             }
           }
         } else if (e.state === "diving") {
-          e.diveProgress += dt * (0.32 + Math.min(0.2, (waveRef.current - 1) * 0.03));
+          e.diveProgress += dt * (0.34 + Math.min(0.2, (waveRef.current - 1) * 0.03));
           const t = e.diveProgress;
 
           if (e.type === "wasp") {
             e.x = e.diveStartX + Math.sin(t * Math.PI * 6) * 55 + (player.x - e.diveStartX) * (t * 0.6);
             e.y = e.diveStartY + t * (height - 30);
 
-            if (t > 0.3 && t < 0.35 && enemyBulletsRef.current.length < 5) {
+            // Stinger 1
+            if (t >= 0.28 && !e.hasFiredDive && enemyBulletsRef.current.length < 22) {
+              e.hasFiredDive = true;
               const angle = Math.atan2(player.y - e.y, player.x - e.x);
               enemyBulletsRef.current.push({
                 x: e.x,
                 y: e.y + 10,
-                vx: Math.cos(angle) * 3.8,
-                vy: Math.sin(angle) * 3.8,
+                vx: Math.cos(angle) * 4.0,
+                vy: Math.sin(angle) * 4.0,
                 type: "stinger",
               });
+              arcadeAudio.playEnemyLaser();
+            }
+            // Stinger 2
+            if (t >= 0.58 && !e.hasFiredDive2 && enemyBulletsRef.current.length < 22) {
+              e.hasFiredDive2 = true;
+              const angle = Math.atan2(player.y - e.y, player.x - e.x);
+              enemyBulletsRef.current.push({
+                x: e.x,
+                y: e.y + 10,
+                vx: Math.cos(angle) * 4.2,
+                vy: Math.sin(angle) * 4.2,
+                type: "stinger",
+              });
+              arcadeAudio.playEnemyLaser();
             }
           } else if (e.type === "butterfly") {
             e.x = e.diveStartX + Math.sin(t * Math.PI * 2) * (110 * e.diveCurve);
             e.y = e.diveStartY + Math.sin(t * Math.PI) * (height - 60);
 
-            if (Math.random() < 0.01 * timeScale && enemyBulletsRef.current.length < 5) {
-              enemyBulletsRef.current.push({ x: e.x, y: e.y + 10, vx: (Math.random() - 0.5) * 1.5, vy: 2.8, type: "standard" });
+            // Dual spread shot on dive
+            if (t >= 0.32 && !e.hasFiredDive && enemyBulletsRef.current.length < 22) {
+              e.hasFiredDive = true;
+              enemyBulletsRef.current.push({ x: e.x - 7, y: e.y + 10, vx: -0.9, vy: 3.2, type: "standard" });
+              enemyBulletsRef.current.push({ x: e.x + 7, y: e.y + 10, vx: 0.9, vy: 3.2, type: "standard" });
+              arcadeAudio.playEnemyLaser();
             }
           } else {
+            // Boss Galaga aimed dual torpedoes
             e.x = e.diveStartX + Math.sin(t * Math.PI * 2) * (70 * e.diveCurve);
             e.y = e.diveStartY + t * (height - 40);
 
-            if (Math.random() < 0.015 * timeScale && enemyBulletsRef.current.length < 5) {
-              enemyBulletsRef.current.push({ x: e.x, y: e.y + 10, vx: (Math.random() - 0.5) * 0.8, vy: 3.2, type: "standard" });
+            if (t >= 0.28 && !e.hasFiredDive && enemyBulletsRef.current.length < 22) {
+              e.hasFiredDive = true;
+              const angle = Math.atan2(player.y - e.y, player.x - e.x);
+              enemyBulletsRef.current.push({
+                x: e.x - 9,
+                y: e.y + 12,
+                vx: Math.cos(angle - 0.15) * 3.6,
+                vy: Math.sin(angle - 0.15) * 3.6,
+                type: "standard",
+              });
+              enemyBulletsRef.current.push({
+                x: e.x + 9,
+                y: e.y + 12,
+                vx: Math.cos(angle + 0.15) * 3.6,
+                vy: Math.sin(angle + 0.15) * 3.6,
+                type: "standard",
+              });
+              arcadeAudio.playEnemyLaser();
             }
           }
 
@@ -969,7 +1025,7 @@ export default function GalagaPage() {
           }
         }
 
-        if (b.y > height + 20 || b.y < -30) enemyBullets.splice(i, 1);
+        if (b.y > height + 25 || b.y < -40 || b.x < -40 || b.x > width + 40) enemyBullets.splice(i, 1);
       }
 
       // 7. Enemy ramming

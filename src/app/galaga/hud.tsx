@@ -41,17 +41,17 @@ export function GalagaHud({
   return (
     <>
       {/* Top Arcade HUD Header */}
-      <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 sm:px-8 py-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
-        <div className="flex items-center gap-6 sm:gap-10">
+      <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-2.5 sm:px-8 py-2 sm:py-3 bg-gradient-to-b from-black/90 via-black/50 to-transparent pointer-events-none box-border max-w-full overflow-hidden">
+        <div className="flex items-center gap-2.5 sm:gap-10 shrink-0">
           <div>
             <div className="text-[10px] sm:text-xs text-rose-500 font-bold tracking-wider">1UP</div>
-            <div className="text-sm sm:text-lg font-bold text-white tracking-widest">
+            <div className="text-xs sm:text-lg font-bold text-white tracking-widest">
               {score.toString().padStart(6, "0")}
             </div>
           </div>
           <div>
             <div className="text-[10px] sm:text-xs text-sky-400 font-bold tracking-wider">HIGH SCORE</div>
-            <div className="text-sm sm:text-lg font-bold text-white tracking-widest">
+            <div className="text-xs sm:text-lg font-bold text-white tracking-widest">
               {highScore.toString().padStart(6, "0")}
             </div>
           </div>
@@ -59,7 +59,7 @@ export function GalagaHud({
 
         {/* Flagship Boss Health Bar (if active) */}
         {bossHpPercent !== null && (
-          <div className="flex flex-col items-center pointer-events-auto">
+          <div className="hidden sm:flex flex-col items-center pointer-events-auto">
             <div className="text-[10px] sm:text-xs text-purple-400 font-bold tracking-widest animate-pulse">
               FLAGSHIP DREADNOUGHT
             </div>
@@ -72,43 +72,43 @@ export function GalagaHud({
           </div>
         )}
 
-        <div className="flex items-center gap-3 sm:gap-6 pointer-events-auto">
+        <div className="flex items-center gap-2 sm:gap-6 pointer-events-auto shrink-0 pr-1 sm:pr-0">
           {/* Mute Toggle */}
           <button
             type="button"
             onClick={onToggleMute}
             title={isMuted ? "Unmute Audio" : "Mute Audio"}
-            className="p-1.5 sm:p-2 rounded-full text-zinc-400 hover:text-white transition-all hover:scale-110 active:scale-95 cursor-pointer"
+            className="p-1 sm:p-2 rounded-full text-zinc-400 hover:text-white transition-all hover:scale-110 active:scale-95 cursor-pointer shrink-0"
           >
             {isMuted ? (
-              <svg className="w-5 h-5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
               </svg>
             ) : (
-              <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
               </svg>
             )}
           </button>
 
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <div className="text-[10px] sm:text-xs text-amber-400 font-bold tracking-wider">STAGE</div>
-            <div className="text-sm sm:text-lg font-bold text-white tracking-widest text-right">{wave}</div>
+            <div className="text-xs sm:text-lg font-bold text-white tracking-widest text-right">{wave}</div>
           </div>
 
           <Link
             href="/"
             aria-label="Volver al inicio"
-            className="group inline-flex items-center justify-center p-1.5 sm:p-2 rounded-full text-zinc-400 hover:text-white transition-all opacity-70 hover:opacity-100 hover:scale-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="group inline-flex items-center justify-center p-1 sm:p-2 rounded-full text-zinc-400 hover:text-white transition-all opacity-70 hover:opacity-100 hover:scale-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 shrink-0"
           >
-            <EspiralSvg className="h-6 w-auto sm:h-7 md:h-8 text-current transition-all duration-700 ease-out group-hover:rotate-180 group-hover:text-amber-400 drop-shadow-md" />
+            <EspiralSvg className="h-5 w-auto sm:h-7 md:h-8 text-current transition-all duration-700 ease-out group-hover:rotate-180 group-hover:text-amber-400 drop-shadow-md" />
           </Link>
         </div>
       </header>
 
       {/* Bottom HUD: Lives, Shields, Bombs, Weapon Status */}
-      <footer className="absolute bottom-3 left-4 sm:left-8 right-4 sm:right-8 z-20 flex items-center justify-between pointer-events-none">
+      <footer className="absolute bottom-3 left-0 right-0 px-2.5 sm:px-8 z-20 flex items-center justify-between pointer-events-none box-border max-w-full">
         <div className="flex items-center gap-3 sm:gap-6">
           {/* Ships Remaining */}
           <div className="flex items-center gap-1.5">

@@ -77,6 +77,8 @@ export interface Enemy {
   divePattern: "zigzag" | "figure8" | "escort" | "tractor";
   tractorTimer?: number;
   wingPhase: number;
+  hasFiredDive?: boolean;
+  hasFiredDive2?: boolean;
 }
 
 export interface FlagshipBoss {

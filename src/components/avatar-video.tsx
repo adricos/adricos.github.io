@@ -2,192 +2,235 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 
-interface StepTarget {
-  poseId: number;
-  name: string;
-  time: number;
-}
-
-// Seamless 1 -> 2 -> 3 -> 2 -> 1 video timeline (169 frames @ 24fps, 7.04s)
-// Pose 1 (Center Front) -> Pose 2 (Left) -> Pose 3 (Right) -> Pose 2 (Left) -> Pose 1 (Center Front)
-const STEPS: StepTarget[] = [
-  { poseId: 1, name: "Front Neutral", time: 0.92 },
-  { poseId: 2, name: "Slight Left", time: 2.25 },
-  { poseId: 3, name: "Slight Right", time: 3.96 },
-  { poseId: 2, name: "Slight Left (Return)", time: 5.67 },
-  { poseId: 1, name: "Front Neutral (Return)", time: 7.00 },
-];
-
+/**
+ * InteractiveAvatar
+ *
+ * Implements a cursor-controlled interactive avatar using a single pre-rendered video.
+ * Dynamic distance-based tracking:
+ *   - Inside container bounds: Stays at 50% (looking forward, direct eye contact with subtle warm smile).
+ *   - Left of container: Proportional continuous rotation from 50% down to 0% (looking left)
+ *     based on the cursor's distance to the left edge of the screen.
+ *   - Right of container: Proportional continuous rotation from 50% up to 100% (looking right)
+ *     based on the cursor's distance to the right edge of the screen.
+ *
+ * All frames are interpolated smoothly via requestAnimationFrame using frame-rate independent
+ * exponential smoothing, ensuring zero jitter, no autoplay, and zero CPU usage when idle.
+ */
 export function AvatarVideo() {
+  const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [currentStep, setCurrentStep] = useState(0);
-  const isHoveredRef = useRef(false);
-  const cleanupWatchRef = useRef<(() => void) | null>(null);
 
-  const activePose = STEPS[currentStep];
+  const [hasMetadata, setHasMetadata] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
-  // Frame-accurate stopping helper using requestVideoFrameCallback
-  const playUntilTime = useCallback((targetTime: number, onDone?: () => void) => {
-    const video = videoRef.current;
-    if (!video) return;
+  const durationRef = useRef<number>(0);
+  const targetTimeRef = useRef<number>(0);
+  const rafIdRef = useRef<number | null>(null);
+  const lastRafTimeRef = useRef<number>(0);
+  const prefersReducedMotionRef = useRef<boolean>(false);
+  const animateScrubRef = useRef<(() => void) | null>(null);
 
-    if (cleanupWatchRef.current) {
-      cleanupWatchRef.current();
-      cleanupWatchRef.current = null;
+  const cancelAnimation = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
     }
-
-    let active = true;
-
-    const requestNextFrame = () => {
-      if (!active || !video) return;
-      if ("requestVideoFrameCallback" in video) {
-        (
-          video as HTMLVideoElement & {
-            requestVideoFrameCallback: (
-              cb: (now: DOMHighResTimeStamp, meta: { mediaTime: number }) => void
-            ) => number;
-          }
-        ).requestVideoFrameCallback(handleFrame);
-      } else {
-        requestAnimationFrame(() => handleFrame(performance.now()));
-      }
-    };
-
-    const handleFrame = (
-      _now: DOMHighResTimeStamp,
-      metadata?: { mediaTime: number }
-    ) => {
-      if (!active || !video) return;
-
-      // While hovered with mouse: loop continuously through 1 -> 2 -> 3 -> 2 -> 1 motion
-      if (isHoveredRef.current) {
-        if (video.currentTime >= 7.00) {
-          video.currentTime = STEPS[0].time; // Loop back to 0.92s cleanly
-        }
-        if (video.paused) {
-          video.play().catch(() => {});
-        }
-        requestNextFrame();
-        return;
-      }
-
-      // While not hovered: stop on the exact target resting frame
-      const curTime = metadata?.mediaTime ?? video.currentTime;
-      if (curTime >= targetTime) {
-        video.pause();
-        active = false;
-        if (onDone) onDone();
-        return;
-      }
-
-      requestNextFrame();
-    };
-
-    video.play().catch(() => {});
-    requestNextFrame();
-
-    cleanupWatchRef.current = () => {
-      active = false;
-    };
   }, []);
 
-  useEffect(() => {
+  const animateScrub = useCallback(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || durationRef.current <= 0) return;
 
-    video.muted = true;
-    video.playsInline = true;
-
-    // Initial page load: Plays into Pose 1 (0.92s) and settles
-    playUntilTime(STEPS[0].time, () => {
-      setCurrentStep(0);
-    });
-
-    return () => {
-      if (cleanupWatchRef.current) {
-        cleanupWatchRef.current();
-      }
-    };
-  }, [playUntilTime]);
-
-  const handlePointerEnter = (e: React.PointerEvent) => {
-    // Only engage hover loop for actual mouse pointers (prevents sticking on touchscreens)
-    if (e.pointerType === "touch") return;
-    const video = videoRef.current;
-    if (!video) return;
-
-    isHoveredRef.current = true;
-    playUntilTime(STEPS[2].time);
-  };
-
-  const handlePointerLeave = (e: React.PointerEvent) => {
-    if (e.pointerType === "touch") return;
-    const video = videoRef.current;
-    if (!video) return;
-
-    isHoveredRef.current = false;
-
-    // Settle gracefully on the next upcoming resting pose
-    const curTime = video.currentTime;
-    const nextStepIdx = STEPS.findIndex((s) => s.time > curTime);
-    if (nextStepIdx === -1) {
-      video.currentTime = STEPS[0].time;
-      video.pause();
-      setCurrentStep(0);
+    if (prefersReducedMotionRef.current) {
+      video.currentTime = targetTimeRef.current;
+      cancelAnimation();
       return;
     }
 
-    setCurrentStep(nextStepIdx);
-    playUntilTime(STEPS[nextStepIdx].time);
-  };
+    const now = performance.now();
+    const dt = lastRafTimeRef.current > 0 ? Math.min((now - lastRafTimeRef.current) / 1000, 0.08) : 0.016;
+    lastRafTimeRef.current = now;
 
-  const handleNextPose = () => {
-    const video = videoRef.current;
-    if (!video) return;
+    const current = video.currentTime;
+    const target = targetTimeRef.current;
+    const diff = target - current;
 
-    // A direct click temporarily disables the hover loop so the user can step manually
-    isHoveredRef.current = false;
-
-    let nextStep = currentStep + 1;
-
-    // If we reached the end of the return (7.00s), wrap to Step 1 (2.25s)
-    if (nextStep >= STEPS.length) {
-      video.currentTime = STEPS[0].time;
-      nextStep = 1;
+    // Threshold ~15ms (less than 1 frame at 24fps)
+    if (Math.abs(diff) < 0.02) {
+      video.currentTime = target;
+      cancelAnimation();
+      return;
     }
 
-    setCurrentStep(nextStep);
-    const target = STEPS[nextStep];
-    playUntilTime(target.time);
+    // Frame-rate independent exponential smoothing (lambda = 12 for responsive, natural human head movement)
+    const factor = 1 - Math.exp(-12 * dt);
+    const nextTime = current + diff * factor;
+
+    video.currentTime = Math.max(0, Math.min(durationRef.current, nextTime));
+
+    if (animateScrubRef.current) {
+      rafIdRef.current = requestAnimationFrame(animateScrubRef.current);
+    }
+  }, [cancelAnimation]);
+
+  useEffect(() => {
+    animateScrubRef.current = animateScrub;
+  }, [animateScrub]);
+
+  const setTargetRatio = useCallback(
+    (ratio: number) => {
+      const duration = durationRef.current;
+      if (duration <= 0) return;
+
+      const clampedRatio = Math.max(0, Math.min(1, ratio));
+      targetTimeRef.current = clampedRatio * duration;
+
+      if (rafIdRef.current === null) {
+        lastRafTimeRef.current = performance.now();
+        rafIdRef.current = requestAnimationFrame(animateScrub);
+      }
+    },
+    [animateScrub]
+  );
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      prefersReducedMotionRef.current = mediaQuery.matches;
+      const onMotionChange = (e: MediaQueryListEvent) => {
+        prefersReducedMotionRef.current = e.matches;
+      };
+      mediaQuery.addEventListener("change", onMotionChange);
+      return () => mediaQuery.removeEventListener("change", onMotionChange);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hasMetadata) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
+
+      const container = containerRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      const { clientX, clientY } = e;
+
+      // Inside container: strictly 50% (direct frontal eye contact with smile)
+      const isInside =
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom;
+
+      if (isInside) {
+        setTargetRatio(0.5);
+      } else if (clientX < rect.left) {
+        // Left side: map distance from container left edge to screen left edge into [0.5 -> 0.0]
+        const maxDistLeft = Math.max(rect.left, 80);
+        const dist = rect.left - clientX;
+        const norm = Math.min(1, Math.max(0, dist / maxDistLeft));
+        setTargetRatio(0.5 - 0.5 * norm);
+      } else if (clientX > rect.right) {
+        // Right side: map distance from container right edge to screen right edge into [0.5 -> 1.0]
+        const maxDistRight = Math.max(window.innerWidth - rect.right, 80);
+        const dist = clientX - rect.right;
+        const norm = Math.min(1, Math.max(0, dist / maxDistRight));
+        setTargetRatio(0.5 + 0.5 * norm);
+      } else {
+        // Directly vertical (above/below the container column)
+        setTargetRatio(0.5);
+      }
+    };
+
+    const handleMouseLeaveDoc = () => {
+      setTargetRatio(0.5);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("mouseleave", handleMouseLeaveDoc);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("mouseleave", handleMouseLeaveDoc);
+      cancelAnimation();
+    };
+  }, [hasMetadata, setTargetRatio, cancelAnimation]);
+
+  const handleLoadedMetadata = () => {
+    const video = videoRef.current;
+    if (!video || !video.duration || isNaN(video.duration)) {
+      setHasError(true);
+      return;
+    }
+
+    const duration = video.duration;
+    durationRef.current = duration;
+
+    const midPoint = duration / 2;
+    targetTimeRef.current = midPoint;
+    video.currentTime = midPoint;
+    video.pause();
+
+    setHasMetadata(true);
+  };
+
+  const handleClick = () => {
+    const duration = durationRef.current;
+    if (duration <= 0) return;
+
+    const current = targetTimeRef.current;
+    const mid = duration / 2;
+
+    if (Math.abs(current - mid) < 0.1) {
+      setTargetRatio(0);
+    } else if (Math.abs(current) < 0.1) {
+      setTargetRatio(1);
+    } else {
+      setTargetRatio(0.5);
+    }
   };
 
   return (
     <div
-      onClick={handleNextPose}
-      onPointerEnter={handlePointerEnter}
-      onPointerLeave={handlePointerLeave}
-      className="relative h-full w-full overflow-hidden select-none cursor-pointer group"
-      title={`Current: ${activePose.name} (Pose ${activePose.poseId}) — Hover or click to animate`}
+      ref={containerRef}
+      onClick={handleClick}
+      onPointerEnter={() => setTargetRatio(0.5)}
+      className="relative h-full w-full overflow-hidden select-none cursor-pointer group bg-zinc-950"
+      title="Interactive Avatar — Head rotation tracks cursor distance from center"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          handleNextPose();
+          handleClick();
         }
       }}
-      aria-label={`Interactive Avatar — ${activePose.name}. Hover or click to animate.`}
+      aria-label="Interactive Avatar. Move cursor left or right to control head rotation."
     >
       <video
         ref={videoRef}
         src="/videos/avatar.mp4"
         poster="/images/avatar/pose-1.jpg"
-        autoPlay
         muted
         playsInline
         preload="auto"
-        className="h-full w-full object-cover select-none"
+        onLoadedMetadata={handleLoadedMetadata}
+        onError={() => setHasError(true)}
+        className={`h-full w-full object-cover select-none pointer-events-none transition-opacity duration-300 ${
+          hasError ? "opacity-0" : "opacity-100"
+        }`}
       />
+
+      {hasError && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src="/images/avatar/pose-1.jpg"
+          alt="Adrian Costa"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      )}
     </div>
   );
 }

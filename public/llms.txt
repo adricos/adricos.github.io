@@ -1,0 +1,37 @@
+# Adrian Costa
+
+> Tech Lead & Software Architect with 25+ years of experience delivering modern full-stack web platforms, data-intensive enterprise interfaces, React Native mobile apps, and agentic AI systems.
+
+- **Name**: Adrian Costa
+- **Role**: Tech Lead / Principal Software Architect
+- **Website**: https://www.adriancosta.com.ar
+- **Email**: info@adriancosta.com.ar
+- **GitHub**: https://github.com/adricos
+- **LinkedIn**: https://www.linkedin.com/in/adriancosta
+
+---
+
+## Core Expertise & Domains
+
+### 1. Full-Stack & Distributed Systems
+- **Core Technologies**: Next.js, React, TypeScript, Node.js, NestJS, GraphQL, .NET / C#, Java Spring, PostgreSQL, Kafka
+- **Experience**: 25+ years architecting and delivering scalable enterprise platforms across fintech, energy, and healthcare. Decoupled microservices, event-driven architectures, and high-concurrency systems.
+
+### 2. Complex Data-Intensive Interfaces
+- **Core Technologies**: AG Grid, Mapbox, Deck.gl, Neo4j, Mantine, Material UI, Chart.js
+- **Experience**: Architecting mission-critical financial asset servicing platforms, corporate actions processing, energy intelligence systems, and real-time geospatial visualizations.
+
+### 3. Mobile Architecture & React Native
+- **Core Technologies**: React Native, Expo, Clean Architecture, Zustand, Inversify DI, HealthKit
+- **Experience**: Package-by-Feature design, decoupled state management, offline-first sync, and high-performance cross-platform iOS/Android UX.
+
+### 4. Agentic Systems & AI Tooling
+- **Core Technologies**: Agentic Workflows, Model Context Protocol (MCP) Servers, ElasticClaw, Vercel AI SDK, Claude Skills, Ollama, Local & Cloud LLMs
+- **Experience**: Designing agentic software factory workflows, multi-agent coordination, autonomous coding pipelines, and MCP server integrations empowering modern engineering teams.
+
+---
+
+## Notable Routes & Experiments
+- **Portfolio Home**: https://www.adriancosta.com.ar/
+- **Ceci n'est pas une pipe (Magritte tribute & interactive canvas)**: https://www.adriancosta.com.ar/pipe
+- **Galaga Retro Arcade Experiment**: https://www.adriancosta.com.ar/galaga

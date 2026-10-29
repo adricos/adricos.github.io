@@ -7,13 +7,11 @@ interface PoseTarget {
   time: number;
 }
 
+// Focused purely on the 3 consistent head-and-shoulders poses
 const POSES: PoseTarget[] = [
   { name: "Front Neutral", time: 0.92 },
   { name: "Slight Left", time: 2.25 },
   { name: "Slight Right", time: 3.62 },
-  { name: "Looking Upward", time: 4.92 },
-  { name: "Arms Crossed", time: 6.62 },
-  { name: "Front Smile", time: 7.75 },
 ];
 
 export function AvatarVideo() {
@@ -34,7 +32,6 @@ export function AvatarVideo() {
 
     let active = true;
 
-    // Use requestVideoFrameCallback for exact hardware decoder frame synchronization
     const handleFrame = (
       _now: DOMHighResTimeStamp,
       metadata?: { mediaTime: number }
@@ -88,9 +85,9 @@ export function AvatarVideo() {
     video.muted = true;
     video.playsInline = true;
 
-    // Initial page load: Play the full natural video sequence, landing on Pose 6 (Front Smile)
-    playUntilTime(POSES[POSES.length - 1].time, () => {
-      setCurrentPoseIdx(POSES.length - 1);
+    // Initial page load: Plays smoothly into Pose 1 (Front Neutral) and settles
+    playUntilTime(POSES[0].time, () => {
+      setCurrentPoseIdx(0);
     });
 
     return () => {
@@ -108,23 +105,20 @@ export function AvatarVideo() {
     setCurrentPoseIdx(nextIdx);
     const targetPose = POSES[nextIdx];
 
-    // If moving forward in time from current position, animate continuously through the transition
-    if (targetPose.time > video.currentTime && targetPose.time - video.currentTime < 2.5) {
+    // If moving forward (Neutral -> Left -> Right), animate continuously through the video motion
+    if (targetPose.time > video.currentTime && targetPose.time - video.currentTime < 2.0) {
       playUntilTime(targetPose.time);
     } else {
-      // If looping back or seeking, execute a graceful cross-fade dissolve to eliminate harsh cuts
+      // When cycling from Pose 3 (Right) back to Pose 1 (Front), execute a smooth cross-dissolve
       setIsFading(true);
       setTimeout(() => {
-        video.currentTime = targetPose.time;
-        video.pause();
-
-        const handleSeeked = () => {
+        video.currentTime = 0.0;
+        playUntilTime(POSES[0].time, () => {
           setIsFading(false);
-        };
-        video.addEventListener("seeked", handleSeeked, { once: true });
+        });
 
-        // Fallback in case seek event resolves quickly
-        setTimeout(() => setIsFading(false), 200);
+        // Safety fallback to restore opacity
+        setTimeout(() => setIsFading(false), 250);
       }, 200);
     }
   };
@@ -133,7 +127,7 @@ export function AvatarVideo() {
     <div
       onClick={handleNextPose}
       className="relative h-full w-full overflow-hidden select-none cursor-pointer group"
-      title={`Pose: ${POSES[currentPoseIdx].name} — Click to animate to next pose`}
+      title={`Pose: ${POSES[currentPoseIdx].name} — Click to switch pose`}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
